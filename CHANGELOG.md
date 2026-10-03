@@ -1,3 +1,14 @@
+## [0.9.0](https://github.com/munimtechnologies/munim-bluetooth/compare/v0.8.1...v0.9.0) (2026-10-03)
+
+### ✨ Features
+
+* Android 16/17 Bluetooth APIs and iOS 27 Channel Sounding ([#48](https://github.com/munimtechnologies/munim-bluetooth/issues/48)) ([b391ad5](https://github.com/munimtechnologies/munim-bluetooth/commit/b391ad5d4bf18ebbf7100c6d9893aa9a5f72d3c2))
+
+### 🛠️ Other changes
+
+* **example:** safe-area-context 5.10 and the hoisted hermesc path for RN 0.87 ([d67b5e4](https://github.com/munimtechnologies/munim-bluetooth/commit/d67b5e4e932c4bc6ab64372f862e048d8fc26aba))
+* **example:** upgrade the example app to React Native 0.87.1 ([e9418f8](https://github.com/munimtechnologies/munim-bluetooth/commit/e9418f85c3acccfd783cd8bd59f42db26ffc87a2))
+
 ## [0.8.1](https://github.com/munimtechnologies/munim-bluetooth/compare/v0.8.0...v0.8.1) (2026-09-19)
 
 ### 🐛 Bug Fixes
