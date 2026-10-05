@@ -487,7 +487,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
 
             // Service UUIDs - ALLOWED
             if !options.serviceUUIDs.isEmpty {
-                let uuids = options.serviceUUIDs.compactMap { CBUUID(string: $0) }
+                let uuids = try options.serviceUUIDs.map { try makeCBUUID($0) }
                 advertisingData[CBAdvertisementDataServiceUUIDsKey] = uuids
     #if DEBUG
                 NSLog("[MunimBluetooth] Advertising service UUIDs: %@", options.serviceUUIDs)
@@ -514,7 +514,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             // Advertising data types - Most are NOT ALLOWED
             if let advertisingDataTypes = options.advertisingData {
                 // Only process allowed fields
-                processAdvertisingData(advertisingDataTypes, into: &advertisingData)
+                try processAdvertisingData(advertisingDataTypes, into: &advertisingData)
                 if let completeLocalName = advertisingDataTypes.completeLocalName {
                     advertisingData[CBAdvertisementDataLocalNameKey] = completeLocalName
     #if DEBUG
@@ -558,7 +558,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             peripheralManager.stopAdvertising()
 
             var newAdvertisingData: [String: Any] = [:]
-            processAdvertisingData(advertisingData, into: &newAdvertisingData)
+            try processAdvertisingData(advertisingData, into: &newAdvertisingData)
 
             currentAdvertisingData = normalizeAdvertisingData(advertisingData, serviceUUIDs: nil, localName: nil)
             peripheralManager.startAdvertising(newAdvertisingData)
@@ -613,7 +613,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             var createdServices: [(GATTService, CBMutableService)] = []
 
             for service in services {
-                let serviceUUID = CBUUID(string: service.uuid)
+                let serviceUUID = try makeCBUUID(service.uuid)
                 let mutableService = CBMutableService(type: serviceUUID, primary: true)
 
                 var characteristics: [CBMutableCharacteristic] = []
@@ -621,7 +621,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
                 NSLog("[MunimBluetooth] Service %@: %d characteristics", service.uuid, service.characteristics.count)
 
                 for characteristic in service.characteristics {
-                    let charUUID = CBUUID(string: characteristic.uuid)
+                    let charUUID = try makeCBUUID(characteristic.uuid)
 
                     var properties: CBCharacteristicProperties = []
                     for prop in characteristic.properties {
@@ -665,8 +665,8 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
                         value: nil,
                         permissions: permissions
                     )
-                    mutableChar.descriptors = characteristic.descriptors?.compactMap {
-                        makeMutableDescriptor(from: $0)
+                    mutableChar.descriptors = try characteristic.descriptors?.compactMap {
+                        try makeMutableDescriptor(from: $0)
                     }
 
                     characteristics.append(mutableChar)
@@ -678,8 +678,11 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
                 createdServices.append((service, mutableService))
             }
 
+            // GATT allows several instances of one service UUID, which
+            // `uniqueKeysWithValues` would trap on; includes resolve to the first.
             let servicesByUUID = Dictionary(
-                uniqueKeysWithValues: createdServices.map { ($0.0.uuid.lowercased(), $0.1) }
+                createdServices.map { ($0.0.uuid.lowercased(), $0.1) },
+                uniquingKeysWith: { first, _ in first }
             )
 
             for (service, mutableService) in createdServices {
@@ -918,6 +921,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             }
 
             let manufacturerFilter = try parseManufacturerScanFilter(options)
+            let serviceUUIDs = try options?.serviceUUIDs?.map { try makeCBUUID($0) }
             scanOptions = options
             scanDeviceNameFilter = options?.deviceName.flatMap { $0.isEmpty ? nil : $0 }
             scanManufacturerFilter = manufacturerFilter
@@ -928,7 +932,6 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
                 scanOptions[CBCentralManagerScanOptionAllowDuplicatesKey] = options.allowDuplicates ?? false
             }
 
-            let serviceUUIDs = options?.serviceUUIDs?.map { CBUUID(string: $0) }
             centralManager.scanForPeripherals(
                 withServices: serviceUUIDs?.isEmpty == false ? serviceUUIDs : nil,
                 options: scanOptions as [String : Any]
@@ -1241,6 +1244,12 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             }
             guard let data = hexStringToData(value) else {
                 promise.reject(withError: NSError(domain: "MunimBluetooth", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid hex string for descriptor write"]))
+                return promise
+            }
+            // CoreBluetooth raises an uncatchable exception when the Client
+            // Characteristic Configuration descriptor is written directly.
+            guard !isClientCharacteristicConfiguration(descriptorUUID) else {
+                promise.reject(withError: NSError(domain: "MunimBluetooth", code: 1, userInfo: [NSLocalizedDescriptionKey: "iOS does not allow writing the Client Characteristic Configuration descriptor (0x2902); use subscribeToCharacteristic() or unsubscribeFromCharacteristic()"]))
                 return promise
             }
 
@@ -2290,6 +2299,32 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         }
     }
 
+    /// `CBUUID(string:)` raises an Objective-C exception (which Swift cannot
+    /// catch) for anything that is not a 16/32-bit hex UUID or a full UUID, so
+    /// strings coming from JS are checked first.
+    private func makeCBUUID(_ value: String) throws -> CBUUID {
+        let isShortForm = value.range(
+            of: "^(0[xX])?[0-9A-Fa-f]{4}([0-9A-Fa-f]{4})?$",
+            options: .regularExpression
+        ) != nil
+        guard isShortForm || UUID(uuidString: value) != nil else {
+            throw NSError(
+                domain: "MunimBluetooth",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid Bluetooth UUID: '\(value)'. Use a 4 or 8 digit hex UUID or a full 128-bit UUID."]
+            )
+        }
+        return CBUUID(string: value)
+    }
+
+    /// The Client Characteristic Configuration descriptor (0x2902) in any of
+    /// the forms JS may pass it.
+    private func isClientCharacteristicConfiguration(_ uuid: String) -> Bool {
+        let normalized = uuid.lowercased()
+        return normalized == "2902" || normalized == "00002902" ||
+            normalized == "00002902-0000-1000-8000-00805f9b34fb"
+    }
+
     private func hexStringToData(_ hex: String) -> Data? {
         var data = Data()
         var hex = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2499,7 +2534,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         }
     }
 
-    private func processAdvertisingData(_ data: AdvertisingDataTypes, into advertisingData: inout [String: Any]) {
+    private func processAdvertisingData(_ data: AdvertisingDataTypes, into advertisingData: inout [String: Any]) throws {
         if let localName = data.completeLocalName ?? data.shortenedLocalName {
             advertisingData[CBAdvertisementDataLocalNameKey] = localName
         }
@@ -2513,7 +2548,7 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         serviceUUIDs.append(contentsOf: data.completeServiceUUIDs128 ?? [])
 
         if !serviceUUIDs.isEmpty {
-            advertisingData[CBAdvertisementDataServiceUUIDsKey] = serviceUUIDs.map { CBUUID(string: $0) }
+            advertisingData[CBAdvertisementDataServiceUUIDsKey] = try serviceUUIDs.map { try makeCBUUID($0) }
         }
     }
 
@@ -2549,8 +2584,8 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         )
     }
 
-    private func makeMutableDescriptor(from descriptor: GATTDescriptor) -> CBMutableDescriptor? {
-        let descriptorUUID = CBUUID(string: descriptor.uuid)
+    private func makeMutableDescriptor(from descriptor: GATTDescriptor) throws -> CBMutableDescriptor? {
+        let descriptorUUID = try makeCBUUID(descriptor.uuid)
         let normalizedUUID = descriptorUUID.uuidString.lowercased()
         let userDescriptionUUID = CBUUID(string: CBUUIDCharacteristicUserDescriptionString).uuidString.lowercased()
         let formatUUID = CBUUID(string: CBUUIDCharacteristicFormatString).uuidString.lowercased()
@@ -2930,9 +2965,10 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
 
         pendingCharacteristicDiscoveryCounts.removeValue(forKey: deviceId)
         devicesNeedingServiceRediscovery.remove(deviceId)
+        let promise = pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)
         completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
         let services = buildGATTServices(from: peripheral.services ?? [])
-        pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)?.resolve(withResult: services)
+        promise?.resolve(withResult: services)
         emit("servicesDiscovered", body: [
             "deviceId": deviceId,
             "services": servicePayload(services)
@@ -3771,16 +3807,18 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         let deviceId = peripheral.identifier.uuidString
 
         if let error = error {
-            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
-            pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)?.reject(withError: error)
+            let promise = pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)
             pendingCharacteristicDiscoveryCounts.removeValue(forKey: deviceId)
+            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
+            promise?.reject(withError: error)
             return
         }
 
         guard let services = peripheral.services, !services.isEmpty else {
-            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
-            pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)?.resolve(withResult: [])
+            let promise = pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)
             pendingCharacteristicDiscoveryCounts.removeValue(forKey: deviceId)
+            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
+            promise?.resolve(withResult: [])
             return
         }
 
@@ -3797,9 +3835,10 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         let deviceId = peripheral.identifier.uuidString
 
         if let error = error {
-            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
-            pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)?.reject(withError: error)
+            let promise = pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)
             pendingCharacteristicDiscoveryCounts.removeValue(forKey: deviceId)
+            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
+            promise?.reject(withError: error)
             return
         }
 
@@ -3820,9 +3859,10 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         let deviceId = peripheral.identifier.uuidString
 
         if let error = error {
-            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
-            pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)?.reject(withError: error)
+            let promise = pendingServiceDiscoveryPromises.removeValue(forKey: deviceId)
             pendingCharacteristicDiscoveryCounts.removeValue(forKey: deviceId)
+            completeGattOperation(deviceId: deviceId, kinds: ["discoverServices"], target: deviceId)
+            promise?.reject(withError: error)
             return
         }
 
@@ -3836,13 +3876,15 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
 
         if let error = error {
             for key in Array(pendingDescriptorReadPromises.keys) where key.hasPrefix(prefix) {
+                let promise = pendingDescriptorReadPromises.removeValue(forKey: key)
                 completeGattOperation(deviceId: deviceId, kinds: ["readDescriptor"], target: key)
-                pendingDescriptorReadPromises.removeValue(forKey: key)?.reject(withError: error)
+                promise?.reject(withError: error)
             }
             for key in Array(pendingDescriptorWritePromises.keys) where key.hasPrefix(prefix) {
-                completeGattOperation(deviceId: deviceId, kinds: ["writeDescriptor"], target: key)
-                pendingDescriptorWritePromises.removeValue(forKey: key)?.reject(withError: error)
+                let promise = pendingDescriptorWritePromises.removeValue(forKey: key)
                 pendingDescriptorWriteValues.removeValue(forKey: key)
+                completeGattOperation(deviceId: deviceId, kinds: ["writeDescriptor"], target: key)
+                promise?.reject(withError: error)
             }
             return
         }
@@ -3852,8 +3894,9 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             if let descriptor = findDescriptor(characteristic: characteristic, descriptorUUID: descriptorUUID) {
                 peripheral.readValue(for: descriptor)
             } else {
+                let promise = pendingDescriptorReadPromises.removeValue(forKey: key)
                 completeGattOperation(deviceId: deviceId, kinds: ["readDescriptor"], target: key)
-                pendingDescriptorReadPromises.removeValue(forKey: key)?.reject(withError: NSError(
+                promise?.reject(withError: NSError(
                     domain: "MunimBluetooth",
                     code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Descriptor not found: \(descriptorUUID)"]
@@ -3866,9 +3909,10 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
                let value = pendingDescriptorWriteValues[key] {
                 peripheral.writeValue(value, for: descriptor)
             } else {
-                completeGattOperation(deviceId: deviceId, kinds: ["writeDescriptor"], target: key)
+                let promise = pendingDescriptorWritePromises.removeValue(forKey: key)
                 pendingDescriptorWriteValues.removeValue(forKey: key)
-                pendingDescriptorWritePromises.removeValue(forKey: key)?.reject(withError: NSError(
+                completeGattOperation(deviceId: deviceId, kinds: ["writeDescriptor"], target: key)
+                promise?.reject(withError: NSError(
                     domain: "MunimBluetooth",
                     code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Descriptor not found: \(descriptorUUID)"]
@@ -3887,8 +3931,11 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
                 serviceUUID: serviceUUID,
                 characteristicUUID: characteristic.uuid.uuidString
             )
+            // Take the promise before completing: completing starts the next queued
+            // operation, which may store its own promise under the same key.
+            let promise = pendingReadPromises.removeValue(forKey: key)
             completeGattOperation(deviceId: deviceId, kinds: ["readCharacteristic"], target: key)
-            pendingReadPromises.removeValue(forKey: key)?.reject(withError: error)
+            promise?.reject(withError: error)
             return
         }
 
@@ -3900,13 +3947,14 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             serviceUUID: serviceUUID,
             characteristicUUID: characteristic.uuid.uuidString
         )
+        let promise = pendingReadPromises.removeValue(forKey: key)
         completeGattOperation(deviceId: deviceId, kinds: ["readCharacteristic"], target: key)
         let value = CharacteristicValue(
             value: hexString,
             serviceUUID: serviceUUID,
             characteristicUUID: characteristic.uuid.uuidString
         )
-        pendingReadPromises.removeValue(forKey: key)?.resolve(withResult: value)
+        promise?.resolve(withResult: value)
 
         emit("characteristicValueChanged", body: [
             "deviceId": deviceId,
@@ -3931,13 +3979,14 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             descriptorUUID: descriptor.uuid.uuidString
         )
 
+        let promise = pendingDescriptorReadPromises.removeValue(forKey: key)
         completeGattOperation(deviceId: deviceId, kinds: ["readDescriptor"], target: key)
         if let error = error {
-            pendingDescriptorReadPromises.removeValue(forKey: key)?.reject(withError: error)
+            promise?.reject(withError: error)
             return
         }
 
-        pendingDescriptorReadPromises.removeValue(forKey: key)?.resolve(withResult: DescriptorValue(
+        promise?.resolve(withResult: DescriptorValue(
             value: descriptor.value.flatMap { descriptorValueToHex($0) } ?? "",
             serviceUUID: serviceUUID,
             characteristicUUID: characteristic.uuid.uuidString,
@@ -3954,12 +4003,13 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             characteristicUUID: characteristic.uuid.uuidString
         )
 
+        let promise = pendingWritePromises.removeValue(forKey: key)
         completeGattOperation(deviceId: deviceId, kinds: ["writeCharacteristic"], target: key)
         if let error = error {
-            pendingWritePromises.removeValue(forKey: key)?.reject(withError: error)
+            promise?.reject(withError: error)
             NSLog("Bluetooth: writeError")
         } else {
-            pendingWritePromises.removeValue(forKey: key)?.resolve(withResult: ())
+            promise?.resolve(withResult: ())
             debugLog("write succeeded characteristic=\(characteristic.uuid.uuidString)")
 	        }
 	    }
@@ -3976,11 +4026,12 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             descriptorUUID: descriptor.uuid.uuidString
         )
         pendingDescriptorWriteValues.removeValue(forKey: key)
+        let promise = pendingDescriptorWritePromises.removeValue(forKey: key)
         completeGattOperation(deviceId: deviceId, kinds: ["writeDescriptor"], target: key)
         if let error = error {
-            pendingDescriptorWritePromises.removeValue(forKey: key)?.reject(withError: error)
+            promise?.reject(withError: error)
         } else {
-            pendingDescriptorWritePromises.removeValue(forKey: key)?.resolve(withResult: ())
+            promise?.resolve(withResult: ())
         }
     }
 
@@ -3991,13 +4042,14 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             serviceUUID: characteristic.service?.uuid.uuidString ?? "",
             characteristicUUID: characteristic.uuid.uuidString
         )
+        let promise = pendingNotificationStatePromises.removeValue(forKey: key)
         completeGattOperation(deviceId: deviceId, kinds: ["subscribe", "unsubscribe"], target: key)
 
         if let error = error {
-            pendingNotificationStatePromises.removeValue(forKey: key)?.reject(withError: error)
+            promise?.reject(withError: error)
             NSLog("Bluetooth: notification state error - %@", error.localizedDescription)
         } else {
-            pendingNotificationStatePromises.removeValue(forKey: key)?.resolve(withResult: ())
+            promise?.resolve(withResult: ())
             NSLog(
                 "Bluetooth: notification state updated characteristic=%@ notifying=%@",
                 characteristic.uuid.uuidString,
@@ -4037,15 +4089,16 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
 
     func handlePeripheralDidReadRSSI(_ peripheral: CBPeripheral, rssi RSSI: NSNumber, error: Error?) {
         let deviceId = peripheral.identifier.uuidString
+        let promise = pendingRSSIPromises.removeValue(forKey: deviceId)
         completeGattOperation(deviceId: deviceId, kinds: ["readRSSI"], target: deviceId)
 
         if let error = error {
-            pendingRSSIPromises.removeValue(forKey: deviceId)?.reject(withError: error)
+            promise?.reject(withError: error)
             NSLog("Bluetooth: RSSI error peripheral=%@ error=%@", deviceId, error.localizedDescription)
             return
         }
 
-        pendingRSSIPromises.removeValue(forKey: deviceId)?.resolve(withResult: RSSI.doubleValue)
+        promise?.resolve(withResult: RSSI.doubleValue)
         emit("rssiUpdated", body: ["deviceId": deviceId, "rssi": RSSI.doubleValue])
         debugLog("RSSI peripheral=\(deviceId) value=\(RSSI)")
     }
