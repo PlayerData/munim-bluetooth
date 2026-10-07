@@ -53,7 +53,100 @@
 
 **Note**: Bluetooth is heavily platform-gated. This library exposes the features that iOS and Android make available to third-party apps, and it reports unsupported OS-level capabilities through `getCapabilities()` or explicit unsupported errors instead of silently pretending they work.
 
+## Table of contents
+
+- [📚 Documentation](#-documentation)
+- [🚀 Features](#-features)
+- [Platform Support Matrix](#platform-support-matrix)
+- [📦 Installation](#-installation)
+- [Device-to-Device Messaging](#device-to-device-messaging)
+- [Background and Terminated Behavior](#background-and-terminated-behavior)
+- [⚡ Quick Start](#-quick-start)
+- [🔧 API Reference](#-api-reference)
+- [📖 Usage Examples](#-usage-examples)
+- [🔍 Troubleshooting](#-troubleshooting)
+- [👏 Contributing](#-contributing)
+- [📄 License](#-license)
+
+## 📚 Documentation
+
+<p>Learn about building BLE apps <a aria-label="documentation" href="https://github.com/munimtechnologies/munim-bluetooth#readme">in our documentation!</a></p>
+
+- [Getting Started](#-installation)
+- [API Reference](#-api-reference)
+- [Usage Examples](#-usage-examples)
+- [Troubleshooting](#-troubleshooting)
+
+## 🚀 Features
+
+### Peripheral Mode
+
+- 🔵 **BLE Peripheral Mode**: Transform your React Native app into a BLE peripheral device
+- 📡 **Service Advertising**: Advertise custom GATT services with multiple characteristics
+- 🔄 **Real-time Communication**: Support for read, write, and notify operations
+- ✅ **Platform-Aware BLE Advertising**: Use service UUIDs and local names cross-platform, plus Android advertising payload data where the OS allows it
+- 🔧 **Dynamic Updates**: Update advertising data while advertising is active
+
+### Central Mode
+
+- 🔍 **Device Scanning**: Scan for BLE devices with filtering options
+- 🔗 **Device Connection**: Connect and disconnect from BLE devices
+- 📊 **GATT Operations**: Discover services, read/write characteristics
+- 🔔 **Notifications**: Subscribe to characteristic notifications/indications
+- 📶 **RSSI Monitoring**: Read signal strength for connected devices
+
+### Additional Features
+
+- 📱 **Cross-platform**: Works on both iOS and Android
+- 🧭 **Capability Reporting**: `getCapabilities()` reports platform and hardware support before you call optional APIs
+- 🕸️ **Apple Multipeer Transport**: iOS/iPadOS devices can discover, invite, and message nearby peers with Apple's Multipeer Connectivity
+- 🧵 **LE L2CAP Channels**: Stream payloads over LE Credit Based Channels on supported iOS and Android versions
+- 🔌 **Android Classic Bluetooth**: Android RFCOMM client/server messaging for SPP-style devices
+- 🎯 **TypeScript Support**: Full TypeScript definitions included
+- ⚡ **High Performance**: Built with React Native's Nitro modules architecture
+- 🚀 **Expo Compatible**: Works seamlessly with Expo managed and bare workflows
+- 🔐 **Permission Handling**: Built-in permission request helpers
+
+## Platform Support Matrix
+
+| Capability | iOS | Android | Notes |
+| --- | --- | --- | --- |
+| Peripheral advertising | ✅ | ✅ | iOS only allows CoreBluetooth-supported advertising keys such as local name and service UUIDs. Android splits primary advertising data and scan response data to stay within BLE size limits. |
+| Peripheral GATT services | ✅ | ✅ | Read and write requests are handled natively on both platforms. Characteristics can require encrypted access; authenticated-MITM permissions are Android-only because CoreBluetooth has no matching public option. |
+| Peripheral notify/indicate subscriptions | ✅ | ✅ | Subscribe/unsubscribe events are emitted when centrals change CCC state. |
+| Central scan | ✅ | ✅ | Service UUID, name, and manufacturer filters on both platforms (iOS applies name/manufacturer in-process); Android also takes address filters and `ScanSettings`. Android scan failures, including its 5-starts-per-30-seconds throttle, emit `scanFailed`. |
+| Central connect/disconnect | ✅ | ✅ | `connect()` times out after 15 seconds by default (`timeoutMs` configurable); `autoConnect` maps to Android background connect and iOS 17+ auto-reconnect. |
+| Central service discovery | ✅ | ✅ | Emits `servicesDiscovered` in addition to resolving the Promise. Native timeout rejects if callbacks do not arrive. |
+| Central characteristic read | ✅ | ✅ | Resolves with hex-encoded values. Native timeout rejects if callbacks do not arrive. |
+| Central characteristic write | ✅ | ✅ | Supports `write` and `writeWithoutResponse`. With-response writes have native timeout protection; write-without-response is flow controlled, and `getMaximumWriteLength()` reports the payload limit. |
+| Central descriptor read/write | ✅ | ✅ | Uses `readDescriptor()` and `writeDescriptor()` with hex-encoded values. Native timeout rejects if callbacks do not arrive. |
+| Central notify/indicate subscription | ✅ | ✅ | Values emit through `characteristicValueChanged`. |
+| RSSI read | ✅ | ✅ | Resolves with dBm. |
+| ATT MTU request | ➖ | ✅ | Android negotiates the requested MTU. iOS negotiates the MTU itself; `requestMTU()` resolves with the MTU in effect. |
+| Connection priority | ➖ | ✅ | Android `requestConnectionPriority()`; iOS resolves `false`. |
+| GATT cache refresh / Service Changed | ✅ | ✅ | Both emit `servicesChanged` (Android 12+). `refreshGattCache()` is Android-only; iOS resolves `false`. |
+| Enable Bluetooth prompt | ❌ | ✅ | Android `requestEnable()` shows the system dialog; iOS resolves with the current state. |
+| BLE PHY read/preference | ❌ | ✅ | Android 8+ supports `readPhy()` and `setPreferredPhy()` when hardware allows it. |
+| Pairing/bond state | ❌ | ✅ | Android supports bond state, lists bonded devices (`getBondedDevices()`), and starts/removes bonds. iOS handles pairing automatically and does not expose bond management through CoreBluetooth. |
+| Extended advertising | ❌ | ✅ | Android 8+ supports `startExtendedAdvertising()` on hardware with LE extended advertising. iOS does not expose BLE extended advertising. |
+| BLE L2CAP channel streams | ✅ | ✅ | iOS uses CoreBluetooth LE Credit Based Channels. Android requires Android 10+ for LE CoC sockets. Published and outbound channels require encryption by default. |
+| Classic Bluetooth RFCOMM | ❌ | ✅ | Android supports discovery, SPP-style RFCOMM client connections, server/listener sockets, disconnect, write, and receive events. iOS apps cannot use public Classic Bluetooth RFCOMM APIs. |
+| Connection subrating | ❌ | ✅ | Android 16 QPR2+ (API 36.1): `requestSubrateMode()` plus `subrateChanged` events. iOS picks connection parameters itself. |
+| Bond / encryption events | ❌ | ✅ | `bondStateChanged` for every device (with `bondLossReason` on API 36.1+), `bondKeyMissing` and `encryptionChanged` on Android 16+. |
+| Bluetooth Channel Sounding (distance) | ✅ | ❌ | iOS 27+ on hardware reporting `supportsChannelSounding` (N1-chip iPhone + Bluetooth 6 Channel Sounding accessory), foreground only. Needs an app built with Xcode 27. |
+| Apple Multipeer Connectivity | ✅ | ❌ | iOS/iPadOS devices can discover peers, approve incoming invitations explicitly, manually invite selected peers, and exchange encrypted messages. Android cannot join Apple's Multipeer sessions; use BLE/GATT for iOS-to-Android. |
+
+Call `getCapabilities()` at runtime when you need optional behavior. Platform support can still vary by OS version, hardware, permissions, and app background state.
+
 ## 📦 Installation
+
+### React Native CLI
+
+```bash
+npm install munim-bluetooth react-native-nitro-modules
+# or
+yarn add munim-bluetooth react-native-nitro-modules
+```
 
 ### Expo
 
@@ -64,14 +157,6 @@ npx expo install munim-bluetooth react-native-nitro-modules
 > **Note**: This library requires Expo SDK 50+ and works with both managed and bare workflows. To support Nitro modules, you need React Native version v0.78.0 or higher.
 >
 > **Important**: This package requires a native development build in Expo. It does not work in Expo Go. After installing, run `npx expo run:ios`, `npx expo run:android`, or create a development build with EAS.
-
-### React Native CLI
-
-```bash
-npm install munim-bluetooth react-native-nitro-modules
-# or
-yarn add munim-bluetooth react-native-nitro-modules
-```
 
 ### iOS Setup
 
@@ -165,91 +250,6 @@ The example above asserts that scan results are never used to derive physical lo
 Use `["connect"]` for connection-only apps, or add `"advertise"` for peripheral/background advertising. Set `androidBluetoothPermissions` to `false` to manage every Android permission outside the plugin.
 
 **Build defaults.** The Android library compiles against `compileSdk` 37 (Android 17) with `minSdk` 24, matching React Native 0.87 (AGP 9.2, Kotlin 2.2). An app's `rootProject.ext` values (`compileSdkVersion`, `minSdkVersion`, `targetSdkVersion`, `ndkVersion`) override them. Android 16/17 APIs are only called behind runtime version checks, so the library still runs on Android 7.0+ devices.
-
-## Table of contents
-
-- [📦 Installation](#-installation)
-- [📚 Documentation](#-documentation)
-- [🚀 Features](#-features)
-- [Platform Support Matrix](#platform-support-matrix)
-- [Device-to-Device Messaging](#device-to-device-messaging)
-- [Background and Terminated Behavior](#background-and-terminated-behavior)
-- [⚡ Quick Start](#-quick-start)
-- [🔧 API Reference](#-api-reference)
-- [📖 Usage Examples](#-usage-examples)
-- [🔍 Troubleshooting](#-troubleshooting)
-- [👏 Contributing](#-contributing)
-- [📄 License](#-license)
-
-## 📚 Documentation
-
-<p>Learn about building BLE apps <a aria-label="documentation" href="https://github.com/munimtechnologies/munim-bluetooth#readme">in our documentation!</a></p>
-
-- [Getting Started](#-installation)
-- [API Reference](#-api-reference)
-- [Usage Examples](#-usage-examples)
-- [Troubleshooting](#-troubleshooting)
-
-## 🚀 Features
-
-### Peripheral Mode
-
-- 🔵 **BLE Peripheral Mode**: Transform your React Native app into a BLE peripheral device
-- 📡 **Service Advertising**: Advertise custom GATT services with multiple characteristics
-- 🔄 **Real-time Communication**: Support for read, write, and notify operations
-- ✅ **Platform-Aware BLE Advertising**: Use service UUIDs and local names cross-platform, plus Android advertising payload data where the OS allows it
-- 🔧 **Dynamic Updates**: Update advertising data while advertising is active
-
-### Central Mode
-
-- 🔍 **Device Scanning**: Scan for BLE devices with filtering options
-- 🔗 **Device Connection**: Connect and disconnect from BLE devices
-- 📊 **GATT Operations**: Discover services, read/write characteristics
-- 🔔 **Notifications**: Subscribe to characteristic notifications/indications
-- 📶 **RSSI Monitoring**: Read signal strength for connected devices
-
-### Additional Features
-
-- 📱 **Cross-platform**: Works on both iOS and Android
-- 🧭 **Capability Reporting**: `getCapabilities()` reports platform and hardware support before you call optional APIs
-- 🕸️ **Apple Multipeer Transport**: iOS/iPadOS devices can discover, invite, and message nearby peers with Apple's Multipeer Connectivity
-- 🧵 **LE L2CAP Channels**: Stream payloads over LE Credit Based Channels on supported iOS and Android versions
-- 🔌 **Android Classic Bluetooth**: Android RFCOMM client/server messaging for SPP-style devices
-- 🎯 **TypeScript Support**: Full TypeScript definitions included
-- ⚡ **High Performance**: Built with React Native's Nitro modules architecture
-- 🚀 **Expo Compatible**: Works seamlessly with Expo managed and bare workflows
-- 🔐 **Permission Handling**: Built-in permission request helpers
-
-## Platform Support Matrix
-
-| Capability | iOS | Android | Notes |
-| --- | --- | --- | --- |
-| Peripheral advertising | ✅ | ✅ | iOS only allows CoreBluetooth-supported advertising keys such as local name and service UUIDs. Android splits primary advertising data and scan response data to stay within BLE size limits. |
-| Peripheral GATT services | ✅ | ✅ | Read and write requests are handled natively on both platforms. Characteristics can require encrypted access; authenticated-MITM permissions are Android-only because CoreBluetooth has no matching public option. |
-| Peripheral notify/indicate subscriptions | ✅ | ✅ | Subscribe/unsubscribe events are emitted when centrals change CCC state. |
-| Central scan | ✅ | ✅ | Service UUID, name, and manufacturer filters on both platforms (iOS applies name/manufacturer in-process); Android also takes address filters and `ScanSettings`. Android scan failures, including its 5-starts-per-30-seconds throttle, emit `scanFailed`. |
-| Central connect/disconnect | ✅ | ✅ | `connect()` times out after 15 seconds by default (`timeoutMs` configurable); `autoConnect` maps to Android background connect and iOS 17+ auto-reconnect. |
-| Central service discovery | ✅ | ✅ | Emits `servicesDiscovered` in addition to resolving the Promise. Native timeout rejects if callbacks do not arrive. |
-| Central characteristic read | ✅ | ✅ | Resolves with hex-encoded values. Native timeout rejects if callbacks do not arrive. |
-| Central characteristic write | ✅ | ✅ | Supports `write` and `writeWithoutResponse`. With-response writes have native timeout protection; write-without-response is flow controlled, and `getMaximumWriteLength()` reports the payload limit. |
-| Central descriptor read/write | ✅ | ✅ | Uses `readDescriptor()` and `writeDescriptor()` with hex-encoded values. Native timeout rejects if callbacks do not arrive. |
-| Central notify/indicate subscription | ✅ | ✅ | Values emit through `characteristicValueChanged`. |
-| RSSI read | ✅ | ✅ | Resolves with dBm. |
-| ATT MTU request | ➖ | ✅ | Android negotiates the requested MTU. iOS negotiates the MTU itself; `requestMTU()` resolves with the MTU in effect. |
-| Connection priority | ➖ | ✅ | Android `requestConnectionPriority()`; iOS resolves `false`. |
-| GATT cache refresh / Service Changed | ✅ | ✅ | Both emit `servicesChanged` (Android 12+). `refreshGattCache()` is Android-only; iOS resolves `false`. |
-| Enable Bluetooth prompt | ❌ | ✅ | Android `requestEnable()` shows the system dialog; iOS resolves with the current state. |
-| BLE PHY read/preference | ❌ | ✅ | Android 8+ supports `readPhy()` and `setPreferredPhy()` when hardware allows it. |
-| Pairing/bond state | ❌ | ✅ | Android supports bond state, lists bonded devices (`getBondedDevices()`), and starts/removes bonds. iOS handles pairing automatically and does not expose bond management through CoreBluetooth. |
-| Extended advertising | ❌ | ✅ | Android 8+ supports `startExtendedAdvertising()` on hardware with LE extended advertising. iOS does not expose BLE extended advertising. |
-| BLE L2CAP channel streams | ✅ | ✅ | iOS uses CoreBluetooth LE Credit Based Channels. Android requires Android 10+ for LE CoC sockets. Published and outbound channels require encryption by default. |
-| Classic Bluetooth RFCOMM | ❌ | ✅ | Android supports discovery, SPP-style RFCOMM client connections, server/listener sockets, disconnect, write, and receive events. iOS apps cannot use public Classic Bluetooth RFCOMM APIs. |
-| Connection subrating | ❌ | ✅ | Android 16 QPR2+ (API 36.1): `requestSubrateMode()` plus `subrateChanged` events. iOS picks connection parameters itself. |
-| Bond / encryption events | ❌ | ✅ | `bondStateChanged` for every device (with `bondLossReason` on API 36.1+), `bondKeyMissing` and `encryptionChanged` on Android 16+. |
-| Bluetooth Channel Sounding (distance) | ✅ | ❌ | iOS 27+ on hardware reporting `supportsChannelSounding` (N1-chip iPhone + Bluetooth 6 Channel Sounding accessory), foreground only. Needs an app built with Xcode 27. |
-| Apple Multipeer Connectivity | ✅ | ❌ | iOS/iPadOS devices can discover peers, approve incoming invitations explicitly, manually invite selected peers, and exchange encrypted messages. Android cannot join Apple's Multipeer sessions; use BLE/GATT for iOS-to-Android. |
-
-Call `getCapabilities()` at runtime when you need optional behavior. Platform support can still vary by OS version, hardware, permissions, and app background state.
 
 ## Device-to-Device Messaging
 
