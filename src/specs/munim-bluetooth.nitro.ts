@@ -68,6 +68,9 @@ export interface BLEDevice {
   advertisingData?: AdvertisingDataTypes
   serviceUUIDs?: string[]
   serviceData?: ServiceDataEntry[]
+  /**
+   * @deprecated Inconsistent across platforms. Use `manufacturerDataEntries`.
+   */
   manufacturerData?: string
   manufacturerCompanyId?: number
   manufacturerDataEntries?: ManufacturerDataEntry[]
