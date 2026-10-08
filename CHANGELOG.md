@@ -1,3 +1,14 @@
+## [0.9.1](https://github.com/munimtechnologies/munim-bluetooth/compare/v0.9.0...v0.9.1) (2026-10-08)
+
+### 🐛 Bug Fixes
+
+* iOS GATT promise mix-ups and crashes, Android short UUIDs, plugin scan permission ([#49](https://github.com/munimtechnologies/munim-bluetooth/issues/49)) ([943959d](https://github.com/munimtechnologies/munim-bluetooth/commit/943959d0c206f018489b08058cde1e050ed59b00))
+* populate manufacturer data entries in scan results ([#50](https://github.com/munimtechnologies/munim-bluetooth/issues/50)) ([480d6d8](https://github.com/munimtechnologies/munim-bluetooth/commit/480d6d819afd3f5783833702e2d1ebc13b2d8245))
+
+### 📚 Documentation
+
+* move Installation up and list Expo first ([b31f5fd](https://github.com/munimtechnologies/munim-bluetooth/commit/b31f5fd2eebafa6ec15dd5dbfe068953baf49f30))
+
 ## [0.9.0](https://github.com/munimtechnologies/munim-bluetooth/compare/v0.8.1...v0.9.0) (2026-10-03)
 
 ### ✨ Features
