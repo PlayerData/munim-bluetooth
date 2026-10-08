@@ -449,6 +449,10 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
             deviceData["manufacturerData"] = manufacturerData
         }
 
+        if let manufacturerEntries = advertisingPayload["manufacturerDataEntries"] as? [[String: Any]] {
+            deviceData["manufacturerDataEntries"] = manufacturerEntries
+        }
+
         if let txPowerLevel = advertisingPayload["txPowerLevel"] as? Double {
             deviceData["txPowerLevel"] = Int(txPowerLevel)
         }
@@ -2442,6 +2446,10 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
 
         if let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
             payload["manufacturerData"] = dataToHexString(manufacturerData)
+
+            if let entry = manufacturerDataEntry(from: manufacturerData) {
+                payload["manufacturerDataEntries"] = [entry]
+            }
         }
 
         if let txPowerLevel = advertisementData[CBAdvertisementDataTxPowerLevelKey] as? NSNumber {
@@ -2453,6 +2461,19 @@ class HybridMunimBluetooth: HybridMunimBluetoothSpec {
         }
 
         return payload
+    }
+
+    // CoreBluetooth prefixes the payload with the little-endian company identifier.
+    private func manufacturerDataEntry(from manufacturerData: Data) -> [String: Any]? {
+        guard manufacturerData.count >= 2 else { return nil }
+
+        let bytes = [UInt8](manufacturerData)
+        let companyId = UInt16(bytes[0]) | (UInt16(bytes[1]) << 8)
+
+        return [
+            "companyId": Int(companyId),
+            "data": dataToHexString(Data(bytes.dropFirst(2)))
+        ]
     }
 
     private func addServiceUUIDBuckets(_ uuidStrings: [String], to payload: inout [String: Any]) {

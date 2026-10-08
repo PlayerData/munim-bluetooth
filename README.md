@@ -855,7 +855,7 @@ Use `addEventListener(eventName, callback)` for BLE status and data events.
 
 | Event | Payload |
 | --- | --- |
-| `deviceFound` | Discovered BLE device payload: `{ id, name?, localName?, rssi?, serviceUUIDs?, serviceData?, manufacturerData?, txPowerLevel?, isConnectable?, advertisingData? }`. |
+| `deviceFound` | Discovered BLE device payload: `{ id, name?, localName?, rssi?, serviceUUIDs?, serviceData?, manufacturerData?, manufacturerDataEntries?, txPowerLevel?, isConnectable?, advertisingData? }`. |
 | `onDeviceFound`, `scanResult` | Legacy aliases for `deviceFound`. |
 | `scanFailed` | `{ errorCode, message, retryAfterMs? }` on Android scan callback failure, or when a start would exceed Android's 5-starts-per-30-seconds limit (`errorCode: 6`). |
 | `deviceLost` | Android `callbackType: 'matchLost'`: `{ id, rssi? }` when a matching device stops advertising. |
@@ -896,6 +896,30 @@ Use `addEventListener(eventName, callback)` for BLE status and data events.
 | `multipeerPeerFound`, `multipeerPeerLost`, `multipeerPeerStateChanged` | Apple Multipeer peer discovery and connection state. |
 | `multipeerInvitationReceived` | Pending Apple Multipeer invitation: `{ invitationId, peerId, displayName, expiresAt }`. Explicitly accept or reject it before expiry. |
 | `multipeerMessageReceived` | Apple Multipeer data: `{ peerId, displayName, value }`. |
+
+#### Manufacturer specific data in scan results
+
+`manufacturerDataEntries` reports every manufacturer specific data (AD type
+0xFF) entry in the advertisement, keyed by the 16-bit Bluetooth SIG company
+identifier, with that identifier removed from the payload:
+
+```ts
+addEventListener('deviceFound', (device) => {
+  // [{ companyId: 2488, data: '0104fbdf957b' }]
+  console.log(device.manufacturerDataEntries)
+})
+```
+
+On iOS, CoreBluetooth exposes a single manufacturer data value rather than the
+raw advertisement, so `manufacturerDataEntries` holds at most one entry.
+Depending on the iOS version, further manufacturer specific data records are
+either dropped or appended to that value, and manufacturer data in the scan
+response may also be appended. Advertise a single manufacturer specific data
+record if iOS scanners need to read it reliably.
+
+The older `manufacturerData` string is kept for backwards compatibility but is
+deprecated: iOS reports the raw blob with the company identifier still prefixed,
+while Android reports only the first entry with the identifier stripped.
 
 #### `getConnectedDevices()`
 

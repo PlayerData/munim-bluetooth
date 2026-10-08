@@ -4046,7 +4046,11 @@ class HybridMunimBluetooth : HybridMunimBluetoothSpec() {
 
     private fun buildScanPayload(result: ScanResult): Map<String, Any?> {
         val record = result.scanRecord
-        val manufacturerData = extractManufacturerData(record)
+        val manufacturerEntries = extractManufacturerDataEntries(record)
+        val manufacturerData = manufacturerEntries?.firstOrNull()?.data
+        val manufacturerEntryMaps = manufacturerEntries?.map {
+            mapOf("companyId" to it.companyId.toInt(), "data" to it.data)
+        }
         val serviceUUIDs = record?.serviceUuids?.map { it.uuid.toString() }
         val serviceData = extractServiceData(record)
         val txPower = record?.txPowerLevel?.takeIf { it != Int.MIN_VALUE }
@@ -4055,6 +4059,7 @@ class HybridMunimBluetooth : HybridMunimBluetoothSpec() {
         record?.deviceName?.let { advertisingData["completeLocalName"] = it }
         txPower?.let { advertisingData["txPowerLevel"] = it }
         manufacturerData?.let { advertisingData["manufacturerData"] = it }
+        manufacturerEntryMaps?.let { advertisingData["manufacturerDataEntries"] = it }
         serviceUUIDs?.let { addServiceUuidBuckets(it, advertisingData) }
         serviceData?.takeIf { it.isNotEmpty() }?.let { entries ->
             addServiceDataBuckets(entries, advertisingData)
@@ -4065,6 +4070,7 @@ class HybridMunimBluetooth : HybridMunimBluetoothSpec() {
             "name" to result.device.name,
             "localName" to record?.deviceName,
             "manufacturerData" to manufacturerData,
+            "manufacturerDataEntries" to manufacturerEntryMaps,
             "serviceUUIDs" to serviceUUIDs,
             "serviceData" to serviceData?.map { mapOf("uuid" to it.uuid, "data" to it.data) },
             "rssi" to result.rssi,
@@ -4133,10 +4139,15 @@ class HybridMunimBluetooth : HybridMunimBluetoothSpec() {
         eventEmitter.emit("scanResult", payload)
     }
 
-    private fun extractManufacturerData(record: ScanRecord?): String? {
+    private fun extractManufacturerDataEntries(record: ScanRecord?): List<ManufacturerDataEntry>? {
         val data = record?.manufacturerSpecificData ?: return null
-        if (data.size() == 0) return null
-        return data.valueAt(0)?.toHexString()
+        return (0 until data.size()).mapNotNull { index ->
+            val value = data.valueAt(index) ?: return@mapNotNull null
+            ManufacturerDataEntry(
+                companyId = data.keyAt(index).toDouble(),
+                data = value.toHexString()
+            )
+        }.takeIf { it.isNotEmpty() }
     }
 
     private fun extractServiceData(record: ScanRecord?): List<ServiceDataEntry>? {
