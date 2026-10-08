@@ -18,7 +18,7 @@ public extension ExtendedAdvertisingOptions {
   /**
    * Create a new instance of `ExtendedAdvertisingOptions`.
    */
-  init(serviceUUIDs: [String]?, localName: String?, manufacturerData: String?, advertisingData: AdvertisingDataTypes?, connectable: Bool?, scannable: Bool?, legacyMode: Bool?, anonymous: Bool?, includeTxPower: Bool?, interval: Double?, txPowerLevel: Double?, primaryPhy: BluetoothPhy?, secondaryPhy: BluetoothPhy?) {
+  init(serviceUUIDs: [String]?, localName: String?, manufacturerData: String?, manufacturerCompanyId: Double?, manufacturerDataEntries: [ManufacturerDataEntry]?, advertisingData: AdvertisingDataTypes?, connectable: Bool?, scannable: Bool?, legacyMode: Bool?, anonymous: Bool?, includeTxPower: Bool?, interval: Double?, txPowerLevel: Double?, maxTxPower: Bool?, primaryPhy: BluetoothPhy?, secondaryPhy: BluetoothPhy?) {
     self.init({ () -> bridge.std__optional_std__vector_std__string__ in
       if let __unwrappedValue = serviceUUIDs {
         return bridge.create_std__optional_std__vector_std__string__({ () -> bridge.std__vector_std__string_ in
@@ -40,6 +40,24 @@ public extension ExtendedAdvertisingOptions {
     }(), { () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = manufacturerData {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_double_ in
+      if let __unwrappedValue = manufacturerCompanyId {
+        return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__vector_ManufacturerDataEntry__ in
+      if let __unwrappedValue = manufacturerDataEntries {
+        return bridge.create_std__optional_std__vector_ManufacturerDataEntry__({ () -> bridge.std__vector_ManufacturerDataEntry_ in
+          var __vector = bridge.create_std__vector_ManufacturerDataEntry_(__unwrappedValue.count)
+          for __item in __unwrappedValue {
+            __vector.push_back(__item)
+          }
+          return __vector
+        }())
       } else {
         return .init()
       }
@@ -88,6 +106,12 @@ public extension ExtendedAdvertisingOptions {
     }(), { () -> bridge.std__optional_double_ in
       if let __unwrappedValue = txPowerLevel {
         return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_bool_ in
+      if let __unwrappedValue = maxTxPower {
+        return bridge.create_std__optional_bool_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -143,8 +167,32 @@ public extension ExtendedAdvertisingOptions {
   }
   
   @inline(__always)
+  var manufacturerCompanyId: Double? {
+    return { () -> Double? in
+      if bridge.has_value_std__optional_double_(self.__manufacturerCompanyId) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__manufacturerCompanyId)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var manufacturerDataEntries: [ManufacturerDataEntry]? {
+    return { () -> [ManufacturerDataEntry]? in
+      if bridge.has_value_std__optional_std__vector_ManufacturerDataEntry__(self.__manufacturerDataEntries) {
+        let __unwrapped = bridge.get_std__optional_std__vector_ManufacturerDataEntry__(self.__manufacturerDataEntries)
+        return __unwrapped.map({ __item in __item })
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
   var advertisingData: AdvertisingDataTypes? {
-    return self.__advertisingData.value
+    return (bridge.has_value_std__optional_AdvertisingDataTypes_(self.__advertisingData) ? bridge.get_std__optional_AdvertisingDataTypes_(self.__advertisingData) : nil)
   }
   
   @inline(__always)
@@ -232,12 +280,24 @@ public extension ExtendedAdvertisingOptions {
   }
   
   @inline(__always)
+  var maxTxPower: Bool? {
+    return { () -> Bool? in
+      if bridge.has_value_std__optional_bool_(self.__maxTxPower) {
+        let __unwrapped = bridge.get_std__optional_bool_(self.__maxTxPower)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
   var primaryPhy: BluetoothPhy? {
-    return self.__primaryPhy.value
+    return (bridge.has_value_std__optional_BluetoothPhy_(self.__primaryPhy) ? bridge.get_std__optional_BluetoothPhy_(self.__primaryPhy) : nil)
   }
   
   @inline(__always)
   var secondaryPhy: BluetoothPhy? {
-    return self.__secondaryPhy.value
+    return (bridge.has_value_std__optional_BluetoothPhy_(self.__secondaryPhy) ? bridge.get_std__optional_BluetoothPhy_(self.__secondaryPhy) : nil)
   }
 }

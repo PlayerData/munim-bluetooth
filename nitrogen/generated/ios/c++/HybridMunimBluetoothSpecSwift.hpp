@@ -14,6 +14,8 @@ namespace MunimBluetooth { class HybridMunimBluetoothSpec_cxx; }
 
 // Forward declaration of `AdvertisingOptions` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct AdvertisingOptions; }
+// Forward declaration of `ManufacturerDataEntry` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct ManufacturerDataEntry; }
 // Forward declaration of `AdvertisingDataTypes` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct AdvertisingDataTypes; }
 // Forward declaration of `ServiceDataEntry` to properly resolve imports.
@@ -22,20 +24,42 @@ namespace margelo::nitro::munimbluetooth { struct ServiceDataEntry; }
 namespace margelo::nitro::munimbluetooth { struct GATTService; }
 // Forward declaration of `GATTCharacteristic` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTCharacteristic; }
+// Forward declaration of `GATTCharacteristicPermission` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class GATTCharacteristicPermission; }
 // Forward declaration of `GATTDescriptor` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTDescriptor; }
+// Forward declaration of `PeripheralRequestOptions` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct PeripheralRequestOptions; }
+// Forward declaration of `PeripheralRequestMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class PeripheralRequestMode; }
+// Forward declaration of `PeripheralRequestStatus` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class PeripheralRequestStatus; }
 // Forward declaration of `BluetoothCapabilities` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct BluetoothCapabilities; }
 // Forward declaration of `ScanOptions` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct ScanOptions; }
 // Forward declaration of `ScanMode` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class ScanMode; }
+// Forward declaration of `ScanCallbackType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanCallbackType; }
+// Forward declaration of `ScanMatchMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanMatchMode; }
+// Forward declaration of `ScanPhy` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanPhy; }
+// Forward declaration of `ConnectOptions` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct ConnectOptions; }
 // Forward declaration of `CharacteristicValue` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct CharacteristicValue; }
 // Forward declaration of `DescriptorValue` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct DescriptorValue; }
 // Forward declaration of `WriteType` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class WriteType; }
+// Forward declaration of `GATTQueueDiagnostic` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct GATTQueueDiagnostic; }
+// Forward declaration of `WriteLengthType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class WriteLengthType; }
+// Forward declaration of `ConnectionPriority` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ConnectionPriority; }
 // Forward declaration of `BluetoothPhy` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BluetoothPhy; }
 // Forward declaration of `BluetoothPhyOption` to properly resolve imports.
@@ -44,6 +68,10 @@ namespace margelo::nitro::munimbluetooth { enum class BluetoothPhyOption; }
 namespace margelo::nitro::munimbluetooth { struct PhyStatus; }
 // Forward declaration of `BondState` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BondState; }
+// Forward declaration of `BondedDevice` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct BondedDevice; }
+// Forward declaration of `BluetoothDeviceType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class BluetoothDeviceType; }
 // Forward declaration of `ExtendedAdvertisingOptions` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct ExtendedAdvertisingOptions; }
 // Forward declaration of `L2CAPChannel` to properly resolve imports.
@@ -60,27 +88,43 @@ namespace margelo::nitro::munimbluetooth { enum class MultipeerEncryptionPrefere
 namespace margelo::nitro::munimbluetooth { struct MultipeerPeer; }
 // Forward declaration of `MultipeerPeerState` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class MultipeerPeerState; }
+// Forward declaration of `SubrateMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class SubrateMode; }
 
 #include "AdvertisingOptions.hpp"
 #include <string>
 #include <vector>
 #include <optional>
+#include "ManufacturerDataEntry.hpp"
 #include "AdvertisingDataTypes.hpp"
 #include "ServiceDataEntry.hpp"
 #include <NitroModules/Promise.hpp>
 #include "GATTService.hpp"
 #include "GATTCharacteristic.hpp"
+#include "GATTCharacteristicPermission.hpp"
 #include "GATTDescriptor.hpp"
+#include "PeripheralRequestOptions.hpp"
+#include "PeripheralRequestMode.hpp"
+#include "PeripheralRequestStatus.hpp"
 #include "BluetoothCapabilities.hpp"
 #include "ScanOptions.hpp"
 #include "ScanMode.hpp"
+#include "ScanCallbackType.hpp"
+#include "ScanMatchMode.hpp"
+#include "ScanPhy.hpp"
+#include "ConnectOptions.hpp"
 #include "CharacteristicValue.hpp"
 #include "DescriptorValue.hpp"
 #include "WriteType.hpp"
+#include "GATTQueueDiagnostic.hpp"
+#include "WriteLengthType.hpp"
+#include "ConnectionPriority.hpp"
 #include "BluetoothPhy.hpp"
 #include "BluetoothPhyOption.hpp"
 #include "PhyStatus.hpp"
 #include "BondState.hpp"
+#include "BondedDevice.hpp"
+#include "BluetoothDeviceType.hpp"
 #include "ExtendedAdvertisingOptions.hpp"
 #include "L2CAPChannel.hpp"
 #include "BackgroundSessionOptions.hpp"
@@ -89,6 +133,7 @@ namespace margelo::nitro::munimbluetooth { enum class MultipeerPeerState; }
 #include "MultipeerEncryptionPreference.hpp"
 #include "MultipeerPeer.hpp"
 #include "MultipeerPeerState.hpp"
+#include "SubrateMode.hpp"
 
 #include "MunimBluetooth-Swift-Cxx-Umbrella.hpp"
 
@@ -166,14 +211,38 @@ namespace margelo::nitro::munimbluetooth {
         std::rethrow_exception(__result.error());
       }
     }
-    inline void setServices(const std::vector<GATTService>& services) override {
-      auto __result = _swiftPart.setServices(services);
+    inline void setServices(const std::vector<GATTService>& services, const PeripheralRequestOptions& requestOptions) override {
+      auto __result = _swiftPart.setServices(services, std::forward<decltype(requestOptions)>(requestOptions));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
     }
     inline std::shared_ptr<Promise<void>> updateCharacteristicValue(const std::string& serviceUUID, const std::string& characteristicUUID, const std::string& value, std::optional<bool> notify) override {
       auto __result = _swiftPart.updateCharacteristicValue(serviceUUID, characteristicUUID, value, notify);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> respondToPeripheralReadRequest(const std::string& requestId, const std::string& value, bool useStoredValue, PeripheralRequestStatus status) override {
+      auto __result = _swiftPart.respondToPeripheralReadRequest(requestId, value, std::forward<decltype(useStoredValue)>(useStoredValue), static_cast<int>(status));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> respondToPeripheralWriteRequest(const std::string& requestId, bool accept, PeripheralRequestStatus status) override {
+      auto __result = _swiftPart.respondToPeripheralWriteRequest(requestId, std::forward<decltype(accept)>(accept), static_cast<int>(status));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> respondToPeripheralExecuteWriteRequest(const std::string& requestId, bool accept) override {
+      auto __result = _swiftPart.respondToPeripheralExecuteWriteRequest(requestId, std::forward<decltype(accept)>(accept));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -188,8 +257,16 @@ namespace margelo::nitro::munimbluetooth {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<bool>> requestBluetoothPermission() override {
-      auto __result = _swiftPart.requestBluetoothPermission();
+    inline std::shared_ptr<Promise<bool>> requestEnable() override {
+      auto __result = _swiftPart.requestEnable();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<bool>> requestBluetoothPermission(const std::optional<std::vector<std::string>>& permissions) override {
+      auto __result = _swiftPart.requestBluetoothPermission(permissions);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -204,8 +281,8 @@ namespace margelo::nitro::munimbluetooth {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void startScan(const std::optional<ScanOptions>& options) override {
-      auto __result = _swiftPart.startScan(options);
+    inline void startScan(const ScanOptions& options) override {
+      auto __result = _swiftPart.startScan(std::forward<decltype(options)>(options));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -216,8 +293,8 @@ namespace margelo::nitro::munimbluetooth {
         std::rethrow_exception(__result.error());
       }
     }
-    inline std::shared_ptr<Promise<void>> connect(const std::string& deviceId) override {
-      auto __result = _swiftPart.connect(deviceId);
+    inline std::shared_ptr<Promise<void>> connect(const std::string& deviceId, const ConnectOptions& options) override {
+      auto __result = _swiftPart.connect(deviceId, std::forward<decltype(options)>(options));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -254,8 +331,8 @@ namespace margelo::nitro::munimbluetooth {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<void>> writeCharacteristic(const std::string& deviceId, const std::string& serviceUUID, const std::string& characteristicUUID, const std::string& value, std::optional<WriteType> writeType) override {
-      auto __result = _swiftPart.writeCharacteristic(deviceId, serviceUUID, characteristicUUID, value, writeType);
+    inline std::shared_ptr<Promise<void>> writeCharacteristic(const std::string& deviceId, const std::string& serviceUUID, const std::string& characteristicUUID, const std::string& value, WriteType writeType) override {
+      auto __result = _swiftPart.writeCharacteristic(deviceId, serviceUUID, characteristicUUID, value, static_cast<int>(writeType));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -270,17 +347,37 @@ namespace margelo::nitro::munimbluetooth {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void subscribeToCharacteristic(const std::string& deviceId, const std::string& serviceUUID, const std::string& characteristicUUID) override {
+    inline std::shared_ptr<Promise<void>> subscribeToCharacteristic(const std::string& deviceId, const std::string& serviceUUID, const std::string& characteristicUUID) override {
       auto __result = _swiftPart.subscribeToCharacteristic(deviceId, serviceUUID, characteristicUUID);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
     }
-    inline void unsubscribeFromCharacteristic(const std::string& deviceId, const std::string& serviceUUID, const std::string& characteristicUUID) override {
+    inline std::shared_ptr<Promise<void>> unsubscribeFromCharacteristic(const std::string& deviceId, const std::string& serviceUUID, const std::string& characteristicUUID) override {
       auto __result = _swiftPart.unsubscribeFromCharacteristic(deviceId, serviceUUID, characteristicUUID);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<bool>> refreshGattCache(const std::string& deviceId) override {
+      auto __result = _swiftPart.refreshGattCache(deviceId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>> getGattQueueDiagnostics() override {
+      auto __result = _swiftPart.getGattQueueDiagnostics();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline std::shared_ptr<Promise<std::vector<std::string>>> getConnectedDevices() override {
       auto __result = _swiftPart.getConnectedDevices();
@@ -306,8 +403,24 @@ namespace margelo::nitro::munimbluetooth {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<void>> setPreferredPhy(const std::string& deviceId, BluetoothPhy txPhy, BluetoothPhy rxPhy, std::optional<BluetoothPhyOption> phyOption) override {
-      auto __result = _swiftPart.setPreferredPhy(deviceId, static_cast<int>(txPhy), static_cast<int>(rxPhy), phyOption);
+    inline std::shared_ptr<Promise<double>> getMaximumWriteLength(const std::string& deviceId, WriteLengthType type) override {
+      auto __result = _swiftPart.getMaximumWriteLength(deviceId, static_cast<int>(type));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<bool>> requestConnectionPriority(const std::string& deviceId, ConnectionPriority priority) override {
+      auto __result = _swiftPart.requestConnectionPriority(deviceId, static_cast<int>(priority));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> setPreferredPhy(const std::string& deviceId, BluetoothPhy txPhy, BluetoothPhy rxPhy, BluetoothPhyOption phyOption) override {
+      auto __result = _swiftPart.setPreferredPhy(deviceId, static_cast<int>(txPhy), static_cast<int>(rxPhy), static_cast<int>(phyOption));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -332,6 +445,14 @@ namespace margelo::nitro::munimbluetooth {
     }
     inline std::shared_ptr<Promise<BondState>> createBond(const std::string& deviceId) override {
       auto __result = _swiftPart.createBond(deviceId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<std::vector<BondedDevice>>> getBondedDevices() override {
+      auto __result = _swiftPart.getBondedDevices();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -374,8 +495,8 @@ namespace margelo::nitro::munimbluetooth {
         std::rethrow_exception(__result.error());
       }
     }
-    inline std::shared_ptr<Promise<L2CAPChannel>> openL2CAPChannel(const std::string& deviceId, double psm) override {
-      auto __result = _swiftPart.openL2CAPChannel(deviceId, std::forward<decltype(psm)>(psm));
+    inline std::shared_ptr<Promise<L2CAPChannel>> openL2CAPChannel(const std::string& deviceId, double psm, std::optional<bool> encryptionRequired) override {
+      auto __result = _swiftPart.openL2CAPChannel(deviceId, std::forward<decltype(psm)>(psm), encryptionRequired);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -474,6 +595,18 @@ namespace margelo::nitro::munimbluetooth {
         std::rethrow_exception(__result.error());
       }
     }
+    inline void acceptMultipeerInvitation(const std::string& invitationId) override {
+      auto __result = _swiftPart.acceptMultipeerInvitation(invitationId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void rejectMultipeerInvitation(const std::string& invitationId) override {
+      auto __result = _swiftPart.rejectMultipeerInvitation(invitationId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
     inline std::shared_ptr<Promise<std::vector<MultipeerPeer>>> getMultipeerPeers() override {
       auto __result = _swiftPart.getMultipeerPeers();
       if (__result.hasError()) [[unlikely]] {
@@ -484,6 +617,30 @@ namespace margelo::nitro::munimbluetooth {
     }
     inline std::shared_ptr<Promise<void>> sendMultipeerMessage(const std::string& value, const std::optional<std::vector<std::string>>& peerIds, std::optional<bool> reliable) override {
       auto __result = _swiftPart.sendMultipeerMessage(value, peerIds, reliable);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> requestSubrateMode(const std::string& deviceId, SubrateMode mode) override {
+      auto __result = _swiftPart.requestSubrateMode(deviceId, static_cast<int>(mode));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> startChannelSoundingSession(const std::string& deviceId) override {
+      auto __result = _swiftPart.startChannelSoundingSession(deviceId);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> stopChannelSoundingSession(const std::string& deviceId) override {
+      auto __result = _swiftPart.stopChannelSoundingSession(deviceId);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

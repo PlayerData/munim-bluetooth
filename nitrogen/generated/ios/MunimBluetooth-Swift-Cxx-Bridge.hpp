@@ -12,26 +12,34 @@
 namespace margelo::nitro::munimbluetooth { struct AdvertisingDataTypes; }
 // Forward declaration of `BluetoothCapabilities` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct BluetoothCapabilities; }
-// Forward declaration of `BluetoothPhyOption` to properly resolve imports.
-namespace margelo::nitro::munimbluetooth { enum class BluetoothPhyOption; }
+// Forward declaration of `BluetoothDeviceType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class BluetoothDeviceType; }
 // Forward declaration of `BluetoothPhy` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BluetoothPhy; }
 // Forward declaration of `BondState` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BondState; }
+// Forward declaration of `BondedDevice` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct BondedDevice; }
 // Forward declaration of `CharacteristicValue` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct CharacteristicValue; }
 // Forward declaration of `DescriptorValue` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct DescriptorValue; }
+// Forward declaration of `GATTCharacteristicPermission` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class GATTCharacteristicPermission; }
 // Forward declaration of `GATTCharacteristic` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTCharacteristic; }
 // Forward declaration of `GATTDescriptor` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTDescriptor; }
+// Forward declaration of `GATTQueueDiagnostic` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct GATTQueueDiagnostic; }
 // Forward declaration of `GATTService` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTService; }
 // Forward declaration of `HybridMunimBluetoothSpec` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { class HybridMunimBluetoothSpec; }
 // Forward declaration of `L2CAPChannel` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct L2CAPChannel; }
+// Forward declaration of `ManufacturerDataEntry` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct ManufacturerDataEntry; }
 // Forward declaration of `MultipeerDiscoveryInfoEntry` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct MultipeerDiscoveryInfoEntry; }
 // Forward declaration of `MultipeerEncryptionPreference` to properly resolve imports.
@@ -40,16 +48,20 @@ namespace margelo::nitro::munimbluetooth { enum class MultipeerEncryptionPrefere
 namespace margelo::nitro::munimbluetooth { enum class MultipeerPeerState; }
 // Forward declaration of `MultipeerPeer` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct MultipeerPeer; }
+// Forward declaration of `PeripheralRequestMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class PeripheralRequestMode; }
 // Forward declaration of `PhyStatus` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct PhyStatus; }
+// Forward declaration of `ScanCallbackType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanCallbackType; }
+// Forward declaration of `ScanMatchMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanMatchMode; }
 // Forward declaration of `ScanMode` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class ScanMode; }
-// Forward declaration of `ScanOptions` to properly resolve imports.
-namespace margelo::nitro::munimbluetooth { struct ScanOptions; }
+// Forward declaration of `ScanPhy` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanPhy; }
 // Forward declaration of `ServiceDataEntry` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct ServiceDataEntry; }
-// Forward declaration of `WriteType` to properly resolve imports.
-namespace margelo::nitro::munimbluetooth { enum class WriteType; }
 
 // Forward declarations of Swift defined types
 // Forward declaration of `HybridMunimBluetoothSpec_cxx` to properly resolve imports.
@@ -58,25 +70,31 @@ namespace MunimBluetooth { class HybridMunimBluetoothSpec_cxx; }
 // Include C++ defined types
 #include "AdvertisingDataTypes.hpp"
 #include "BluetoothCapabilities.hpp"
+#include "BluetoothDeviceType.hpp"
 #include "BluetoothPhy.hpp"
-#include "BluetoothPhyOption.hpp"
 #include "BondState.hpp"
+#include "BondedDevice.hpp"
 #include "CharacteristicValue.hpp"
 #include "DescriptorValue.hpp"
 #include "GATTCharacteristic.hpp"
+#include "GATTCharacteristicPermission.hpp"
 #include "GATTDescriptor.hpp"
+#include "GATTQueueDiagnostic.hpp"
 #include "GATTService.hpp"
 #include "HybridMunimBluetoothSpec.hpp"
 #include "L2CAPChannel.hpp"
+#include "ManufacturerDataEntry.hpp"
 #include "MultipeerDiscoveryInfoEntry.hpp"
 #include "MultipeerEncryptionPreference.hpp"
 #include "MultipeerPeer.hpp"
 #include "MultipeerPeerState.hpp"
+#include "PeripheralRequestMode.hpp"
 #include "PhyStatus.hpp"
+#include "ScanCallbackType.hpp"
+#include "ScanMatchMode.hpp"
 #include "ScanMode.hpp"
-#include "ScanOptions.hpp"
+#include "ScanPhy.hpp"
 #include "ServiceDataEntry.hpp"
-#include "WriteType.hpp"
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/PromiseHolder.hpp>
 #include <NitroModules/Result.hpp>
@@ -131,6 +149,32 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     return optional.has_value();
   }
   inline double get_std__optional_double_(const std::optional<double>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::vector<ManufacturerDataEntry>
+  /**
+   * Specialized version of `std::vector<ManufacturerDataEntry>`.
+   */
+  using std__vector_ManufacturerDataEntry_ = std::vector<ManufacturerDataEntry>;
+  inline std::vector<ManufacturerDataEntry> create_std__vector_ManufacturerDataEntry_(size_t size) noexcept {
+    std::vector<ManufacturerDataEntry> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::optional<std::vector<ManufacturerDataEntry>>
+  /**
+   * Specialized version of `std::optional<std::vector<ManufacturerDataEntry>>`.
+   */
+  using std__optional_std__vector_ManufacturerDataEntry__ = std::optional<std::vector<ManufacturerDataEntry>>;
+  inline std::optional<std::vector<ManufacturerDataEntry>> create_std__optional_std__vector_ManufacturerDataEntry__(const std::vector<ManufacturerDataEntry>& value) noexcept {
+    return std::optional<std::vector<ManufacturerDataEntry>>(value);
+  }
+  inline bool has_value_std__optional_std__vector_ManufacturerDataEntry__(const std::optional<std::vector<ManufacturerDataEntry>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::vector<ManufacturerDataEntry> get_std__optional_std__vector_ManufacturerDataEntry__(const std::optional<std::vector<ManufacturerDataEntry>>& optional) noexcept {
     return optional.value();
   }
   
@@ -246,6 +290,32 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     return Func_void_std__exception_ptr_Wrapper(std::move(value));
   }
   
+  // pragma MARK: std::vector<GATTCharacteristicPermission>
+  /**
+   * Specialized version of `std::vector<GATTCharacteristicPermission>`.
+   */
+  using std__vector_GATTCharacteristicPermission_ = std::vector<GATTCharacteristicPermission>;
+  inline std::vector<GATTCharacteristicPermission> create_std__vector_GATTCharacteristicPermission_(size_t size) noexcept {
+    std::vector<GATTCharacteristicPermission> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::optional<std::vector<GATTCharacteristicPermission>>
+  /**
+   * Specialized version of `std::optional<std::vector<GATTCharacteristicPermission>>`.
+   */
+  using std__optional_std__vector_GATTCharacteristicPermission__ = std::optional<std::vector<GATTCharacteristicPermission>>;
+  inline std::optional<std::vector<GATTCharacteristicPermission>> create_std__optional_std__vector_GATTCharacteristicPermission__(const std::vector<GATTCharacteristicPermission>& value) noexcept {
+    return std::optional<std::vector<GATTCharacteristicPermission>>(value);
+  }
+  inline bool has_value_std__optional_std__vector_GATTCharacteristicPermission__(const std::optional<std::vector<GATTCharacteristicPermission>>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline std::vector<GATTCharacteristicPermission> get_std__optional_std__vector_GATTCharacteristicPermission__(const std::optional<std::vector<GATTCharacteristicPermission>>& optional) noexcept {
+    return optional.value();
+  }
+  
   // pragma MARK: std::vector<GATTDescriptor>
   /**
    * Specialized version of `std::vector<GATTDescriptor>`.
@@ -292,6 +362,21 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     std::vector<GATTService> vector;
     vector.reserve(size);
     return vector;
+  }
+  
+  // pragma MARK: std::optional<PeripheralRequestMode>
+  /**
+   * Specialized version of `std::optional<PeripheralRequestMode>`.
+   */
+  using std__optional_PeripheralRequestMode_ = std::optional<PeripheralRequestMode>;
+  inline std::optional<PeripheralRequestMode> create_std__optional_PeripheralRequestMode_(const PeripheralRequestMode& value) noexcept {
+    return std::optional<PeripheralRequestMode>(value);
+  }
+  inline bool has_value_std__optional_PeripheralRequestMode_(const std::optional<PeripheralRequestMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline PeripheralRequestMode get_std__optional_PeripheralRequestMode_(const std::optional<PeripheralRequestMode>& optional) noexcept {
+    return optional.value();
   }
   
   // pragma MARK: std::shared_ptr<Promise<void>>
@@ -426,18 +511,48 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     return optional.value();
   }
   
-  // pragma MARK: std::optional<ScanOptions>
+  // pragma MARK: std::optional<ScanCallbackType>
   /**
-   * Specialized version of `std::optional<ScanOptions>`.
+   * Specialized version of `std::optional<ScanCallbackType>`.
    */
-  using std__optional_ScanOptions_ = std::optional<ScanOptions>;
-  inline std::optional<ScanOptions> create_std__optional_ScanOptions_(const ScanOptions& value) noexcept {
-    return std::optional<ScanOptions>(value);
+  using std__optional_ScanCallbackType_ = std::optional<ScanCallbackType>;
+  inline std::optional<ScanCallbackType> create_std__optional_ScanCallbackType_(const ScanCallbackType& value) noexcept {
+    return std::optional<ScanCallbackType>(value);
   }
-  inline bool has_value_std__optional_ScanOptions_(const std::optional<ScanOptions>& optional) noexcept {
+  inline bool has_value_std__optional_ScanCallbackType_(const std::optional<ScanCallbackType>& optional) noexcept {
     return optional.has_value();
   }
-  inline ScanOptions get_std__optional_ScanOptions_(const std::optional<ScanOptions>& optional) noexcept {
+  inline ScanCallbackType get_std__optional_ScanCallbackType_(const std::optional<ScanCallbackType>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<ScanMatchMode>
+  /**
+   * Specialized version of `std::optional<ScanMatchMode>`.
+   */
+  using std__optional_ScanMatchMode_ = std::optional<ScanMatchMode>;
+  inline std::optional<ScanMatchMode> create_std__optional_ScanMatchMode_(const ScanMatchMode& value) noexcept {
+    return std::optional<ScanMatchMode>(value);
+  }
+  inline bool has_value_std__optional_ScanMatchMode_(const std::optional<ScanMatchMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline ScanMatchMode get_std__optional_ScanMatchMode_(const std::optional<ScanMatchMode>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<ScanPhy>
+  /**
+   * Specialized version of `std::optional<ScanPhy>`.
+   */
+  using std__optional_ScanPhy_ = std::optional<ScanPhy>;
+  inline std::optional<ScanPhy> create_std__optional_ScanPhy_(const ScanPhy& value) noexcept {
+    return std::optional<ScanPhy>(value);
+  }
+  inline bool has_value_std__optional_ScanPhy_(const std::optional<ScanPhy>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline ScanPhy get_std__optional_ScanPhy_(const std::optional<ScanPhy>& optional) noexcept {
     return optional.value();
   }
   
@@ -543,19 +658,49 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     return Func_void_DescriptorValue_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::optional<WriteType>
+  // pragma MARK: std::vector<GATTQueueDiagnostic>
   /**
-   * Specialized version of `std::optional<WriteType>`.
+   * Specialized version of `std::vector<GATTQueueDiagnostic>`.
    */
-  using std__optional_WriteType_ = std::optional<WriteType>;
-  inline std::optional<WriteType> create_std__optional_WriteType_(const WriteType& value) noexcept {
-    return std::optional<WriteType>(value);
+  using std__vector_GATTQueueDiagnostic_ = std::vector<GATTQueueDiagnostic>;
+  inline std::vector<GATTQueueDiagnostic> create_std__vector_GATTQueueDiagnostic_(size_t size) noexcept {
+    std::vector<GATTQueueDiagnostic> vector;
+    vector.reserve(size);
+    return vector;
   }
-  inline bool has_value_std__optional_WriteType_(const std::optional<WriteType>& optional) noexcept {
-    return optional.has_value();
+  
+  // pragma MARK: std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>`.
+   */
+  using std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic___ = std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>;
+  inline std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>> create_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic___() noexcept {
+    return Promise<std::vector<GATTQueueDiagnostic>>::create();
   }
-  inline WriteType get_std__optional_WriteType_(const std::optional<WriteType>& optional) noexcept {
-    return optional.value();
+  inline PromiseHolder<std::vector<GATTQueueDiagnostic>> wrap_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic___(std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>> promise) noexcept {
+    return PromiseHolder<std::vector<GATTQueueDiagnostic>>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<GATTQueueDiagnostic>& /* result */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<GATTQueueDiagnostic>&)>`.
+   */
+  using Func_void_std__vector_GATTQueueDiagnostic_ = std::function<void(const std::vector<GATTQueueDiagnostic>& /* result */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<GATTQueueDiagnostic>& / * result * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_GATTQueueDiagnostic__Wrapper final {
+  public:
+    explicit Func_void_std__vector_GATTQueueDiagnostic__Wrapper(std::function<void(const std::vector<GATTQueueDiagnostic>& /* result */)>&& func): _function(std::make_unique<std::function<void(const std::vector<GATTQueueDiagnostic>& /* result */)>>(std::move(func))) {}
+    inline void call(std::vector<GATTQueueDiagnostic> result) const noexcept {
+      _function->operator()(result);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<GATTQueueDiagnostic>& /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_GATTQueueDiagnostic_ create_Func_void_std__vector_GATTQueueDiagnostic_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_GATTQueueDiagnostic__Wrapper wrap_Func_void_std__vector_GATTQueueDiagnostic_(Func_void_std__vector_GATTQueueDiagnostic_ value) noexcept {
+    return Func_void_std__vector_GATTQueueDiagnostic__Wrapper(std::move(value));
   }
   
   // pragma MARK: std::shared_ptr<Promise<std::vector<std::string>>>
@@ -626,21 +771,6 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     return Func_void_double_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::optional<BluetoothPhyOption>
-  /**
-   * Specialized version of `std::optional<BluetoothPhyOption>`.
-   */
-  using std__optional_BluetoothPhyOption_ = std::optional<BluetoothPhyOption>;
-  inline std::optional<BluetoothPhyOption> create_std__optional_BluetoothPhyOption_(const BluetoothPhyOption& value) noexcept {
-    return std::optional<BluetoothPhyOption>(value);
-  }
-  inline bool has_value_std__optional_BluetoothPhyOption_(const std::optional<BluetoothPhyOption>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline BluetoothPhyOption get_std__optional_BluetoothPhyOption_(const std::optional<BluetoothPhyOption>& optional) noexcept {
-    return optional.value();
-  }
-  
   // pragma MARK: std::shared_ptr<Promise<PhyStatus>>
   /**
    * Specialized version of `std::shared_ptr<Promise<PhyStatus>>`.
@@ -707,6 +837,51 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
   Func_void_BondState create_Func_void_BondState(void* NON_NULL swiftClosureWrapper) noexcept;
   inline Func_void_BondState_Wrapper wrap_Func_void_BondState(Func_void_BondState value) noexcept {
     return Func_void_BondState_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::vector<BondedDevice>
+  /**
+   * Specialized version of `std::vector<BondedDevice>`.
+   */
+  using std__vector_BondedDevice_ = std::vector<BondedDevice>;
+  inline std::vector<BondedDevice> create_std__vector_BondedDevice_(size_t size) noexcept {
+    std::vector<BondedDevice> vector;
+    vector.reserve(size);
+    return vector;
+  }
+  
+  // pragma MARK: std::shared_ptr<Promise<std::vector<BondedDevice>>>
+  /**
+   * Specialized version of `std::shared_ptr<Promise<std::vector<BondedDevice>>>`.
+   */
+  using std__shared_ptr_Promise_std__vector_BondedDevice___ = std::shared_ptr<Promise<std::vector<BondedDevice>>>;
+  inline std::shared_ptr<Promise<std::vector<BondedDevice>>> create_std__shared_ptr_Promise_std__vector_BondedDevice___() noexcept {
+    return Promise<std::vector<BondedDevice>>::create();
+  }
+  inline PromiseHolder<std::vector<BondedDevice>> wrap_std__shared_ptr_Promise_std__vector_BondedDevice___(std::shared_ptr<Promise<std::vector<BondedDevice>>> promise) noexcept {
+    return PromiseHolder<std::vector<BondedDevice>>(std::move(promise));
+  }
+  
+  // pragma MARK: std::function<void(const std::vector<BondedDevice>& /* result */)>
+  /**
+   * Specialized version of `std::function<void(const std::vector<BondedDevice>&)>`.
+   */
+  using Func_void_std__vector_BondedDevice_ = std::function<void(const std::vector<BondedDevice>& /* result */)>;
+  /**
+   * Wrapper class for a `std::function<void(const std::vector<BondedDevice>& / * result * /)>`, this can be used from Swift.
+   */
+  class Func_void_std__vector_BondedDevice__Wrapper final {
+  public:
+    explicit Func_void_std__vector_BondedDevice__Wrapper(std::function<void(const std::vector<BondedDevice>& /* result */)>&& func): _function(std::make_unique<std::function<void(const std::vector<BondedDevice>& /* result */)>>(std::move(func))) {}
+    inline void call(std::vector<BondedDevice> result) const noexcept {
+      _function->operator()(result);
+    }
+  private:
+    std::unique_ptr<std::function<void(const std::vector<BondedDevice>& /* result */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_std__vector_BondedDevice_ create_Func_void_std__vector_BondedDevice_(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_std__vector_BondedDevice__Wrapper wrap_Func_void_std__vector_BondedDevice_(Func_void_std__vector_BondedDevice_ value) noexcept {
+    return Func_void_std__vector_BondedDevice__Wrapper(std::move(value));
   }
   
   // pragma MARK: std::shared_ptr<Promise<std::string>>
@@ -962,6 +1137,15 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
     return Result<std::shared_ptr<Promise<DescriptorValue>>>::withError(error);
   }
   
+  // pragma MARK: Result<std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>>
+  using Result_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic____ = Result<std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>>;
+  inline Result_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic____ create_Result_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic____(const std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic____ create_Result_std__shared_ptr_Promise_std__vector_GATTQueueDiagnostic____(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<std::vector<GATTQueueDiagnostic>>>>::withError(error);
+  }
+  
   // pragma MARK: Result<std::shared_ptr<Promise<std::vector<std::string>>>>
   using Result_std__shared_ptr_Promise_std__vector_std__string____ = Result<std::shared_ptr<Promise<std::vector<std::string>>>>;
   inline Result_std__shared_ptr_Promise_std__vector_std__string____ create_Result_std__shared_ptr_Promise_std__vector_std__string____(const std::shared_ptr<Promise<std::vector<std::string>>>& value) noexcept {
@@ -996,6 +1180,15 @@ namespace margelo::nitro::munimbluetooth::bridge::swift {
   }
   inline Result_std__shared_ptr_Promise_BondState___ create_Result_std__shared_ptr_Promise_BondState___(const std::exception_ptr& error) noexcept {
     return Result<std::shared_ptr<Promise<BondState>>>::withError(error);
+  }
+  
+  // pragma MARK: Result<std::shared_ptr<Promise<std::vector<BondedDevice>>>>
+  using Result_std__shared_ptr_Promise_std__vector_BondedDevice____ = Result<std::shared_ptr<Promise<std::vector<BondedDevice>>>>;
+  inline Result_std__shared_ptr_Promise_std__vector_BondedDevice____ create_Result_std__shared_ptr_Promise_std__vector_BondedDevice____(const std::shared_ptr<Promise<std::vector<BondedDevice>>>& value) noexcept {
+    return Result<std::shared_ptr<Promise<std::vector<BondedDevice>>>>::withValue(value);
+  }
+  inline Result_std__shared_ptr_Promise_std__vector_BondedDevice____ create_Result_std__shared_ptr_Promise_std__vector_BondedDevice____(const std::exception_ptr& error) noexcept {
+    return Result<std::shared_ptr<Promise<std::vector<BondedDevice>>>>::withError(error);
   }
   
   // pragma MARK: Result<std::shared_ptr<Promise<std::string>>>

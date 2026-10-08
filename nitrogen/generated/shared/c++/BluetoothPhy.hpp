@@ -30,8 +30,8 @@ namespace margelo::nitro::munimbluetooth {
    */
   enum class BluetoothPhy {
     LE1M      SWIFT_NAME(le1m) = 0,
-    LE2M      SWIFT_NAME(le2m) = 1,
-    LECODED      SWIFT_NAME(lecoded) = 2,
+    LECODED      SWIFT_NAME(lecoded) = 1,
+    LE2M      SWIFT_NAME(le2m) = 2,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::munimbluetooth
@@ -45,8 +45,8 @@ namespace margelo::nitro {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("le1m"): return margelo::nitro::munimbluetooth::BluetoothPhy::LE1M;
-        case hashString("le2m"): return margelo::nitro::munimbluetooth::BluetoothPhy::LE2M;
         case hashString("leCoded"): return margelo::nitro::munimbluetooth::BluetoothPhy::LECODED;
+        case hashString("le2m"): return margelo::nitro::munimbluetooth::BluetoothPhy::LE2M;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum BluetoothPhy - invalid value!");
       }
@@ -54,8 +54,8 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::munimbluetooth::BluetoothPhy arg) {
       switch (arg) {
         case margelo::nitro::munimbluetooth::BluetoothPhy::LE1M: return JSIConverter<std::string>::toJSI(runtime, "le1m");
-        case margelo::nitro::munimbluetooth::BluetoothPhy::LE2M: return JSIConverter<std::string>::toJSI(runtime, "le2m");
         case margelo::nitro::munimbluetooth::BluetoothPhy::LECODED: return JSIConverter<std::string>::toJSI(runtime, "leCoded");
+        case margelo::nitro::munimbluetooth::BluetoothPhy::LE2M: return JSIConverter<std::string>::toJSI(runtime, "le2m");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert BluetoothPhy to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -68,8 +68,8 @@ namespace margelo::nitro {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, value);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("le1m"):
-        case hashString("le2m"):
         case hashString("leCoded"):
+        case hashString("le2m"):
           return true;
         default:
           return false;

@@ -10,6 +10,7 @@ package com.margelo.nitro.munimbluetooth
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import dalvik.annotation.optimization.FastNative
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.HybridObject
 
@@ -47,7 +48,7 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun setServices(services: Array<GATTService>): Unit
+  abstract fun setServices(services: Array<GATTService>, requestOptions: PeripheralRequestOptions): Unit
   
   @DoNotStrip
   @Keep
@@ -55,11 +56,27 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun respondToPeripheralReadRequest(requestId: String, value: String, useStoredValue: Boolean, status: PeripheralRequestStatus): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun respondToPeripheralWriteRequest(requestId: String, accept: Boolean, status: PeripheralRequestStatus): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun respondToPeripheralExecuteWriteRequest(requestId: String, accept: Boolean): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
   abstract fun isBluetoothEnabled(): Promise<Boolean>
   
   @DoNotStrip
   @Keep
-  abstract fun requestBluetoothPermission(): Promise<Boolean>
+  abstract fun requestEnable(): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun requestBluetoothPermission(permissions: Array<String>?): Promise<Boolean>
   
   @DoNotStrip
   @Keep
@@ -67,7 +84,7 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun startScan(options: ScanOptions?): Unit
+  abstract fun startScan(options: ScanOptions): Unit
   
   @DoNotStrip
   @Keep
@@ -75,7 +92,7 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun connect(deviceId: String): Promise<Unit>
+  abstract fun connect(deviceId: String, options: ConnectOptions): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -95,7 +112,7 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun writeCharacteristic(deviceId: String, serviceUUID: String, characteristicUUID: String, value: String, writeType: WriteType?): Promise<Unit>
+  abstract fun writeCharacteristic(deviceId: String, serviceUUID: String, characteristicUUID: String, value: String, writeType: WriteType): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -103,11 +120,19 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun subscribeToCharacteristic(deviceId: String, serviceUUID: String, characteristicUUID: String): Unit
+  abstract fun subscribeToCharacteristic(deviceId: String, serviceUUID: String, characteristicUUID: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
-  abstract fun unsubscribeFromCharacteristic(deviceId: String, serviceUUID: String, characteristicUUID: String): Unit
+  abstract fun unsubscribeFromCharacteristic(deviceId: String, serviceUUID: String, characteristicUUID: String): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun refreshGattCache(deviceId: String): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getGattQueueDiagnostics(): Promise<Array<GATTQueueDiagnostic>>
   
   @DoNotStrip
   @Keep
@@ -123,7 +148,15 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun setPreferredPhy(deviceId: String, txPhy: BluetoothPhy, rxPhy: BluetoothPhy, phyOption: BluetoothPhyOption?): Promise<Unit>
+  abstract fun getMaximumWriteLength(deviceId: String, type: WriteLengthType): Promise<Double>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun requestConnectionPriority(deviceId: String, priority: ConnectionPriority): Promise<Boolean>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun setPreferredPhy(deviceId: String, txPhy: BluetoothPhy, rxPhy: BluetoothPhy, phyOption: BluetoothPhyOption): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -136,6 +169,10 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun createBond(deviceId: String): Promise<BondState>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun getBondedDevices(): Promise<Array<BondedDevice>>
   
   @DoNotStrip
   @Keep
@@ -159,7 +196,7 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun openL2CAPChannel(deviceId: String, psm: Double): Promise<L2CAPChannel>
+  abstract fun openL2CAPChannel(deviceId: String, psm: Double, encryptionRequired: Boolean?): Promise<L2CAPChannel>
   
   @DoNotStrip
   @Keep
@@ -219,11 +256,31 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun acceptMultipeerInvitation(invitationId: String): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun rejectMultipeerInvitation(invitationId: String): Unit
+  
+  @DoNotStrip
+  @Keep
   abstract fun getMultipeerPeers(): Promise<Array<MultipeerPeer>>
   
   @DoNotStrip
   @Keep
   abstract fun sendMultipeerMessage(value: String, peerIds: Array<String>?, reliable: Boolean?): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun requestSubrateMode(deviceId: String, mode: SubrateMode): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun startChannelSoundingSession(deviceId: String): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun stopChannelSoundingSession(deviceId: String): Promise<Unit>
   
   @DoNotStrip
   @Keep
@@ -243,6 +300,7 @@ abstract class HybridMunimBluetoothSpec: HybridObject() {
   @Keep
   protected open class CxxPart(javaPart: HybridMunimBluetoothSpec): HybridObject.CxxPart(javaPart) {
     // C++ JHybridMunimBluetoothSpec::CxxPart::initHybrid(...)
+    @FastNative
     external override fun initHybrid(): HybridData
   }
   override fun createCxxPart(): CxxPart {

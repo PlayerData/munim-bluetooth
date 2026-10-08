@@ -8,6 +8,7 @@ import {
 import type {
   MunimBluetooth as MunimBluetoothSpec,
   AdvertisingDataTypes,
+  ManufacturerDataEntry,
   BLEDevice,
   BackgroundSessionOptions,
   MultipeerSessionOptions,
@@ -17,6 +18,7 @@ import type {
   MultipeerPeerState,
   ScanOptions,
   GATTService,
+  GATTCharacteristicPermission,
   GATTDescriptor,
   CharacteristicValue,
   DescriptorValue,
@@ -27,16 +29,89 @@ import type {
   PhyStatus,
   ExtendedAdvertisingOptions,
   L2CAPChannel,
+  PeripheralRequestOptions,
+  PeripheralRequestStatus,
+  GATTQueueDiagnostic,
+  WriteLengthType,
+  ConnectionPriority,
+  ConnectOptions,
+  ScanCallbackType,
+  ScanMatchMode,
+  ScanPhy,
+  BondedDevice,
+  BluetoothDeviceType,
+  SubrateMode,
 } from './specs/munim-bluetooth.nitro'
+
+/** Bluetooth Channel Sounding role. iOS 27 offers only `initiator`. */
+export type ChannelSoundingRole = 'initiator'
+
+export interface ChannelSoundingOptions {
+  /** Defaults to `initiator`, the only role iOS 27 supports. */
+  role?: ChannelSoundingRole
+}
+
+/** Why Android dropped a bond (API 36.1+ EXTRA_BOND_LOSS_REASON). */
+export type BondLossReason =
+  | 'unknown'
+  | 'bredrAuthFailure'
+  | 'bredrIncomingPairing'
+  | 'leEncryptFailure'
+  | 'leIncomingPairing'
+
+/** Encryption algorithm reported by Android 16+ ACTION_ENCRYPTION_CHANGE. */
+export type EncryptionAlgorithm = 'none' | 'e0' | 'aes' | 'unknown'
+
+/** Link transport reported with Android encryption changes. */
+export type BluetoothTransport = 'auto' | 'bredr' | 'le' | 'unknown'
+
+/**
+ * Subrate mode reported by `subrateChanged`. Besides the requestable modes,
+ * Android reports `systemUpdate` when the stack changed the mode itself and
+ * `notUpdated` when a request did not change it.
+ */
+export type ReportedSubrateMode =
+  | SubrateMode
+  | 'systemUpdate'
+  | 'notUpdated'
+  | 'unknown'
+
+/** Android Bluetooth Class of Device metadata reported during Classic discovery. */
+export interface ClassicBluetoothClass {
+  /** Raw major and minor device class bits from BluetoothClass.getDeviceClass(). */
+  deviceClass: number
+  /** Raw major device class bits from BluetoothClass.getMajorDeviceClass(). */
+  majorDeviceClass: number
+  /** Reported Android BluetoothClass.Service bit flags. */
+  serviceClasses: number[]
+}
+
+/** A device reported by Android Classic Bluetooth discovery. */
+export interface ClassicDevice {
+  id: string
+  name: string | null
+  bondState: BondState
+  rssi?: number
+  bluetoothClass?: ClassicBluetoothClass
+  /** Cached SDP UUIDs, when Android already knows them for this device. */
+  serviceUUIDs?: string[]
+}
 
 export type BluetoothEventMap = {
   deviceFound: BLEDevice
   onDeviceFound: BLEDevice
   scanResult: BLEDevice
-  scanFailed: { errorCode: number; message: string }
+  scanFailed: {
+    errorCode: number
+    message: string
+    /** Android throttle (errorCode 6): when the next start will be allowed. */
+    retryAfterMs?: number
+  }
+  /** Android callbackType 'matchLost': a matching device stopped advertising. */
+  deviceLost: { id: string; rssi?: number }
   advertisingStarted: Record<string, never>
   advertisingStartFailed: { error?: string; errorCode?: number; message?: string }
-  classicDeviceFound: BLEDevice & { bondState?: string }
+  classicDeviceFound: ClassicDevice
   classicScanFailed: { message: string }
   classicScanFinished: Record<string, never>
   classicConnected: { deviceId: string }
@@ -45,9 +120,40 @@ export type BluetoothEventMap = {
   classicServerStarted: { serviceUUID: string; serviceName: string }
   classicServerStopped: { serviceUUID: string }
   classicDataReceived: { deviceId: string; value: string }
-  deviceConnected: { deviceId: string }
-  deviceDisconnected: { deviceId: string }
+  adapterStateChanged: {
+    /** `turningOn`/`turningOff` are Android-only transitional states. */
+    state:
+      | 'unknown'
+      | 'resetting'
+      | 'unsupported'
+      | 'unauthorized'
+      | 'poweredOff'
+      | 'poweredOn'
+      | 'turningOn'
+      | 'turningOff'
+    authorization: 'notDetermined' | 'restricted' | 'denied' | 'allowedAlways' | 'unknown'
+  }
+  deviceConnected: { deviceId: string; status?: number }
+  deviceDisconnected: {
+    deviceId: string
+    status?: number
+    reason?: string
+    /** iOS 17+ with autoConnect: the system is already reconnecting. */
+    isReconnecting?: boolean
+  }
+  connectionStateChanged: {
+    deviceId: string
+    state: 'connecting' | 'connected' | 'disconnecting' | 'disconnected'
+    status?: number
+    reason?: string
+  }
   servicesDiscovered: { deviceId: string; services: GATTService[] }
+  /**
+   * The remote GATT database changed (Service Changed indication). Cached
+   * characteristics are dropped; call discoverServices() again before further
+   * GATT operations. iOS lists the invalidated service UUIDs.
+   */
+  servicesChanged: { deviceId: string; invalidatedServices?: string[] }
   characteristicValueChanged: CharacteristicValue & { deviceId: string }
   l2capChannelPublished: { channelId: string; psm: number }
   l2capChannelPublishFailed: { psm?: number; error: string }
@@ -61,8 +167,25 @@ export type BluetoothEventMap = {
     deviceId?: string
     value: string
   }
-  peripheralReadRequest: CharacteristicValue & { centralId: string }
-  peripheralWriteRequest: CharacteristicValue & { centralId: string }
+  peripheralReadRequest: CharacteristicValue & {
+    requestId: string
+    centralId: string
+    offset: number
+    responseRequired: boolean
+  }
+  peripheralWriteRequest: CharacteristicValue & {
+    requestId: string
+    centralId: string
+    offset: number
+    preparedWrite: boolean
+    responseRequired: boolean
+  }
+  peripheralExecuteWriteRequest: {
+    requestId: string
+    centralId: string
+    execute: boolean
+    preparedRequestIds: string[]
+  }
   peripheralSubscribed: {
     centralId: string
     serviceUUID: string
@@ -74,6 +197,71 @@ export type BluetoothEventMap = {
     characteristicUUID: string
   }
   rssiUpdated: { deviceId: string; rssi: number }
+  bondStateChanged: {
+    deviceId: string
+    bondState: BondState
+    previousBondState?: BondState
+    /**
+     * Android 16 QPR2+ (API 36.1): why an existing bond was lost, when the
+     * system reports it with the transition to `none`.
+     */
+    bondLossReason?: BondLossReason
+  }
+  /**
+   * Android 16+ (API 36): the remote device no longer has the bond keys
+   * (ACTION_KEY_MISSING). Android 16 keeps the bond and disconnects; Android
+   * 17 first tries to re-pair on its own and only reports this if that fails.
+   */
+  bondKeyMissing: { deviceId: string }
+  /** Android 16+ (API 36): link encryption changed (ACTION_ENCRYPTION_CHANGE). */
+  encryptionChanged: {
+    deviceId: string
+    /** Android status code; 0 means the change succeeded. */
+    status: number
+    enabled: boolean
+    algorithm?: EncryptionAlgorithm
+    /** Encryption key size in bytes. */
+    keySize?: number
+    transport?: BluetoothTransport
+  }
+  /** Android 16 QPR2+ (API 36.1): BluetoothGattCallback.onSubrateChange. */
+  subrateChanged: {
+    deviceId: string
+    mode: ReportedSubrateMode
+    /** GATT status; 0 means success. */
+    status: number
+  }
+  /**
+   * iOS 27+: one Channel Sounding procedure finished. `distance` is in
+   * metres; `error` is set (and `distance` absent) when the procedure failed.
+   */
+  channelSoundingResults: {
+    deviceId: string
+    distance?: number
+    error?: string
+    errorCode?: number
+  }
+  /** iOS 27+: a Channel Sounding session ended (cancelled or failed). */
+  channelSoundingCompleted: {
+    deviceId: string
+    error?: string
+    errorCode?: number
+  }
+  mtuChanged: { deviceId: string; mtu: number; status?: number }
+  phyChanged: {
+    deviceId: string
+    txPhy: BluetoothPhy
+    rxPhy: BluetoothPhy
+    status?: number
+  }
+  gattOperationCompleted: {
+    deviceId: string
+    operation: string
+    target: string
+    durationMs: number
+    status?: number
+    error?: string
+  }
   backgroundSessionStarted: {
     platform: string
     serviceUUIDs?: string[]
@@ -100,12 +288,20 @@ export type BluetoothEventMap = {
   multipeerPeerFound: MultipeerPeer
   multipeerPeerLost: { peerId: string }
   multipeerPeerStateChanged: MultipeerPeer
+  multipeerInvitationReceived: {
+    invitationId: string
+    peerId: string
+    displayName: string
+    expiresAt: number
+  }
   multipeerMessageReceived: {
     peerId: string
     displayName: string
     value: string
   }
 }
+
+export type AndroidBluetoothPermission = 'scan' | 'connect' | 'advertise'
 
 export type BluetoothEventName = keyof BluetoothEventMap
 
@@ -144,6 +340,8 @@ export function startAdvertising(options: {
   serviceUUIDs: string[]
   localName?: string
   manufacturerData?: string
+  manufacturerCompanyId?: number
+  manufacturerDataEntries?: ManufacturerDataEntry[]
   advertisingData?: AdvertisingDataTypes
 }): void {
   return MunimBluetooth.startAdvertising(options)
@@ -181,8 +379,11 @@ export function stopAdvertising(): void {
  *
  * @param services - An array of service objects, each with a uuid and an array of characteristics.
  */
-export function setServices(services: GATTService[]): void {
-  return MunimBluetooth.setServices(services)
+export function setServices(
+  services: GATTService[],
+  requestOptions?: PeripheralRequestOptions
+): void {
+  return MunimBluetooth.setServices(services, requestOptions ?? {})
 }
 
 /**
@@ -203,6 +404,38 @@ export function updateCharacteristicValue(
   )
 }
 
+export function respondToPeripheralReadRequest(
+  requestId: string,
+  value?: string,
+  status?: PeripheralRequestStatus
+): Promise<void> {
+  return MunimBluetooth.respondToPeripheralReadRequest(
+    requestId,
+    value ?? '',
+    value === undefined,
+    status ?? 'success'
+  )
+}
+
+export function respondToPeripheralWriteRequest(
+  requestId: string,
+  accept: boolean,
+  status?: PeripheralRequestStatus
+): Promise<void> {
+  return MunimBluetooth.respondToPeripheralWriteRequest(
+    requestId,
+    accept,
+    status ?? (accept ? 'success' : 'writeNotPermitted')
+  )
+}
+
+export function respondToPeripheralExecuteWriteRequest(
+  requestId: string,
+  accept: boolean
+): Promise<void> {
+  return MunimBluetooth.respondToPeripheralExecuteWriteRequest(requestId, accept)
+}
+
 // ========== Central/Manager Features ==========
 
 /**
@@ -215,12 +448,24 @@ export function isBluetoothEnabled(): Promise<boolean> {
 }
 
 /**
- * Request Bluetooth permissions (Android) or check authorization status (iOS).
+ * Ask the user to turn Bluetooth on (Android system dialog). Resolves true
+ * when Bluetooth is on afterwards. iOS cannot enable Bluetooth and resolves
+ * with the current state.
+ */
+export function requestEnable(): Promise<boolean> {
+  return MunimBluetooth.requestEnable()
+}
+
+/**
+ * Request selected Bluetooth permissions (Android) or check authorization status (iOS).
  *
+ * @param permissions - Android capabilities to request. Defaults to central-mode permissions.
  * @returns Promise resolving to true if permissions are granted, false otherwise.
  */
-export function requestBluetoothPermission(): Promise<boolean> {
-  return MunimBluetooth.requestBluetoothPermission()
+export function requestBluetoothPermission(
+  permissions: AndroidBluetoothPermission[] = ['scan', 'connect']
+): Promise<boolean> {
+  return MunimBluetooth.requestBluetoothPermission(permissions)
 }
 
 /**
@@ -236,7 +481,7 @@ export function getCapabilities(): Promise<BluetoothCapabilities> {
  * @param options - Optional scan configuration including service UUIDs to filter by.
  */
 export function startScan(options?: ScanOptions): void {
-  return MunimBluetooth.startScan(options)
+  return MunimBluetooth.startScan(options ?? {})
 }
 
 /**
@@ -250,10 +495,15 @@ export function stopScan(): void {
  * Connect to a BLE device.
  *
  * @param deviceId - The unique identifier of the device to connect to.
+ * @param options - Optional `timeoutMs` (default 15000; 0 = none) and
+ *   `autoConnect` (Android background connect / iOS 17+ auto-reconnect).
  * @returns Promise resolving when connection is established or rejected.
  */
-export function connect(deviceId: string): Promise<void> {
-  return MunimBluetooth.connect(deviceId)
+export function connect(
+  deviceId: string,
+  options?: ConnectOptions
+): Promise<void> {
+  return MunimBluetooth.connect(deviceId, options ?? {})
 }
 
 /**
@@ -334,7 +584,7 @@ export function writeCharacteristic(
     serviceUUID,
     characteristicUUID,
     value,
-    writeType
+    writeType ?? 'write'
   )
 }
 
@@ -368,7 +618,7 @@ export function subscribeToCharacteristic(
   deviceId: string,
   serviceUUID: string,
   characteristicUUID: string
-): void {
+): Promise<void> {
   return MunimBluetooth.subscribeToCharacteristic(
     deviceId,
     serviceUUID,
@@ -387,12 +637,24 @@ export function unsubscribeFromCharacteristic(
   deviceId: string,
   serviceUUID: string,
   characteristicUUID: string
-): void {
+): Promise<void> {
   return MunimBluetooth.unsubscribeFromCharacteristic(
     deviceId,
     serviceUUID,
     characteristicUUID
   )
+}
+
+/**
+ * Clear the OS GATT cache for a connected device (Android). The next
+ * discoverServices() call re-reads the remote database. iOS resolves false.
+ */
+export function refreshGattCache(deviceId: string): Promise<boolean> {
+  return MunimBluetooth.refreshGattCache(deviceId)
+}
+
+export function getGattQueueDiagnostics(): Promise<GATTQueueDiagnostic[]> {
+  return MunimBluetooth.getGattQueueDiagnostics()
 }
 
 /**
@@ -415,10 +677,33 @@ export function readRSSI(deviceId: string): Promise<number> {
 }
 
 /**
- * Request an ATT MTU. Android supports this directly; iOS rejects with unsupported.
+ * Request an ATT MTU. Android negotiates the requested value; iOS negotiates
+ * the MTU itself and resolves with the MTU currently in effect.
  */
 export function requestMTU(deviceId: string, mtu: number): Promise<number> {
   return MunimBluetooth.requestMTU(deviceId, mtu)
+}
+
+/**
+ * Largest value (bytes) one characteristic write of the given type can carry
+ * on this connection. Use it to chunk write-without-response payloads.
+ */
+export function getMaximumWriteLength(
+  deviceId: string,
+  type: WriteLengthType
+): Promise<number> {
+  return MunimBluetooth.getMaximumWriteLength(deviceId, type)
+}
+
+/**
+ * Request a connection interval profile ('high' for throughput/latency,
+ * 'lowPower' to save battery). Android only; iOS resolves false.
+ */
+export function requestConnectionPriority(
+  deviceId: string,
+  priority: ConnectionPriority
+): Promise<boolean> {
+  return MunimBluetooth.requestConnectionPriority(deviceId, priority)
 }
 
 /**
@@ -430,7 +715,7 @@ export function setPreferredPhy(
   rxPhy: BluetoothPhy,
   phyOption?: BluetoothPhyOption
 ): Promise<void> {
-  return MunimBluetooth.setPreferredPhy(deviceId, txPhy, rxPhy, phyOption)
+  return MunimBluetooth.setPreferredPhy(deviceId, txPhy, rxPhy, phyOption ?? 'none')
 }
 
 /**
@@ -455,10 +740,55 @@ export function createBond(deviceId: string): Promise<BondState> {
 }
 
 /**
+ * List devices bonded with this phone (Android). iOS resolves [].
+ */
+export function getBondedDevices(): Promise<BondedDevice[]> {
+  return MunimBluetooth.getBondedDevices()
+}
+
+/**
  * Remove a platform bond where supported.
  */
 export function removeBond(deviceId: string): Promise<BondState> {
   return MunimBluetooth.removeBond(deviceId)
+}
+
+/**
+ * Ask for an LE connection subrate mode (Android 16 QPR2+ / API 36.1).
+ * Resolves when the stack accepted the request; the result arrives as a
+ * `subrateChanged` event. Check `getCapabilities().supportsConnectionSubrating`
+ * first: iOS and older Android reject as unsupported.
+ */
+export function requestSubrateMode(
+  deviceId: string,
+  mode: SubrateMode
+): Promise<void> {
+  return MunimBluetooth.requestSubrateMode(deviceId, mode)
+}
+
+/**
+ * Start a Bluetooth Channel Sounding (distance ranging) session with a
+ * connected peripheral (iOS 27+, `supportsChannelSounding` hardware,
+ * foreground only). Distances arrive as `channelSoundingResults` events.
+ */
+export function startChannelSoundingSession(
+  deviceId: string,
+  options?: ChannelSoundingOptions
+): Promise<void> {
+  const role = options?.role ?? 'initiator'
+  if (role !== 'initiator') {
+    return Promise.reject(
+      new Error(`Unsupported Channel Sounding role: ${String(role)}`)
+    )
+  }
+  return MunimBluetooth.startChannelSoundingSession(deviceId)
+}
+
+/**
+ * Cancel the active Channel Sounding session with a peripheral (iOS 27+).
+ */
+export function stopChannelSoundingSession(deviceId: string): Promise<void> {
+  return MunimBluetooth.stopChannelSoundingSession(deviceId)
 }
 
 /**
@@ -478,10 +808,11 @@ export function stopExtendedAdvertising(advertisingId: string): void {
 }
 
 /**
- * Publish a local BLE L2CAP channel where supported.
+ * Publish a local BLE L2CAP channel where supported. Encryption is required by
+ * default; pass false explicitly to publish an insecure channel.
  */
 export function publishL2CAPChannel(
-  encryptionRequired?: boolean
+  encryptionRequired: boolean = true
 ): Promise<L2CAPChannel> {
   return MunimBluetooth.publishL2CAPChannel(encryptionRequired)
 }
@@ -498,9 +829,10 @@ export function unpublishL2CAPChannel(psm: number): void {
  */
 export function openL2CAPChannel(
   deviceId: string,
-  psm: number
+  psm: number,
+  encryptionRequired: boolean = true
 ): Promise<L2CAPChannel> {
-  return MunimBluetooth.openL2CAPChannel(deviceId, psm)
+  return MunimBluetooth.openL2CAPChannel(deviceId, psm, encryptionRequired)
 }
 
 /**
@@ -602,7 +934,8 @@ export function stopBackgroundSession(): void {
 
 /**
  * Start Apple Multipeer Connectivity transport. This is iOS/iPadOS/macOS/tvOS
- * only; Android cannot join Apple Multipeer sessions.
+ * only; Android cannot join Apple Multipeer sessions. Automatic outgoing and
+ * incoming invitations both default to false.
  */
 export function startMultipeerSession(
   options: MultipeerSessionOptions
@@ -622,6 +955,20 @@ export function stopMultipeerSession(): void {
  */
 export function inviteMultipeerPeer(peerId: string): void {
   return MunimBluetooth.inviteMultipeerPeer(peerId)
+}
+
+/**
+ * Accept a pending incoming Multipeer invitation by opaque runtime id.
+ */
+export function acceptMultipeerInvitation(invitationId: string): void {
+  return MunimBluetooth.acceptMultipeerInvitation(invitationId)
+}
+
+/**
+ * Reject a pending incoming Multipeer invitation by opaque runtime id.
+ */
+export function rejectMultipeerInvitation(invitationId: string): void {
+  return MunimBluetooth.rejectMultipeerInvitation(invitationId)
 }
 
 /**
@@ -661,7 +1008,9 @@ export function addDeviceFoundListener(
     return () => {}
   }
 
-  const subscription = eventEmitter.addListener('deviceFound', callback)
+  const subscription = eventEmitter.addListener('deviceFound', (payload) =>
+    callback(payload as unknown as BLEDevice)
+  )
   return () => subscription.remove()
 }
 
@@ -683,7 +1032,9 @@ export function addEventListener<EventName extends BluetoothEventName>(
     return () => {}
   }
 
-  const subscription = eventEmitter.addListener(eventName, callback)
+  const subscription = eventEmitter.addListener(eventName, (payload) =>
+    callback(payload as unknown as BluetoothEventMap[EventName])
+  )
   return () => subscription.remove()
 }
 
@@ -709,6 +1060,7 @@ export function removeListeners(count: number): void {
 
 export type {
   AdvertisingDataTypes,
+  ManufacturerDataEntry,
   BLEDevice,
   BackgroundSessionOptions,
   MultipeerSessionOptions,
@@ -718,6 +1070,7 @@ export type {
   MultipeerPeerState,
   ScanOptions,
   GATTService,
+  GATTCharacteristicPermission,
   GATTDescriptor,
   CharacteristicValue,
   DescriptorValue,
@@ -728,6 +1081,18 @@ export type {
   PhyStatus,
   ExtendedAdvertisingOptions,
   L2CAPChannel,
+  PeripheralRequestOptions,
+  PeripheralRequestStatus,
+  GATTQueueDiagnostic,
+  WriteLengthType,
+  ConnectionPriority,
+  ConnectOptions,
+  ScanCallbackType,
+  ScanMatchMode,
+  ScanPhy,
+  BondedDevice,
+  BluetoothDeviceType,
+  SubrateMode,
 }
 
 // Default export for convenience
@@ -739,8 +1104,12 @@ export default {
   getAdvertisingData,
   setServices,
   updateCharacteristicValue,
+  respondToPeripheralReadRequest,
+  respondToPeripheralWriteRequest,
+  respondToPeripheralExecuteWriteRequest,
   // Central
   isBluetoothEnabled,
+  requestEnable,
   requestBluetoothPermission,
   getCapabilities,
   startScan,
@@ -754,14 +1123,22 @@ export default {
   writeDescriptor,
   subscribeToCharacteristic,
   unsubscribeFromCharacteristic,
+  refreshGattCache,
+  getGattQueueDiagnostics,
   getConnectedDevices,
   readRSSI,
   requestMTU,
+  getMaximumWriteLength,
+  requestConnectionPriority,
   setPreferredPhy,
   readPhy,
   getBondState,
   createBond,
+  getBondedDevices,
   removeBond,
+  requestSubrateMode,
+  startChannelSoundingSession,
+  stopChannelSoundingSession,
   startExtendedAdvertising,
   stopExtendedAdvertising,
   publishL2CAPChannel,
@@ -781,6 +1158,8 @@ export default {
   startMultipeerSession,
   stopMultipeerSession,
   inviteMultipeerPeer,
+  acceptMultipeerInvitation,
+  rejectMultipeerInvitation,
   getMultipeerPeers,
   sendMultipeerMessage,
   // Events

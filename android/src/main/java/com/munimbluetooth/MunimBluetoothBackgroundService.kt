@@ -24,10 +24,12 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelUuid
 import android.util.Log
+import androidx.core.app.ServiceCompat
 import com.margelo.nitro.munimbluetooth.ScanMode
 import org.json.JSONArray
 import java.util.Locale
@@ -89,13 +91,56 @@ class MunimBluetoothBackgroundService : Service() {
         notificationTitle = config.notificationTitle
         notificationText = config.notificationText
 
-        startForeground(
-            NOTIFICATION_ID,
-            buildNotification(neighborCount = discoveredDeviceIds.size)
-        )
+        if (!promoteToForeground()) {
+            // Android 12+ refuses foreground promotion when the service was
+            // started from the background. The common case is the system
+            // re-delivering a sticky start (null intent) after process death
+            // while the app is not on screen. There is nothing useful to do
+            // from here: stand down without a sticky restart, and the app
+            // will start the session again the next time it is foregrounded.
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         startBleSession(config)
         return START_STICKY
+    }
+
+    /**
+     * Wraps startForeground so a ForegroundServiceStartNotAllowedException
+     * (API 31+) or the pre-31 IllegalStateException is a handled outcome
+     * rather than a process crash in onStartCommand.
+     */
+    private fun promoteToForeground(): Boolean {
+        return try {
+            // Android 14+ requires the runtime type to be a subset of the
+            // manifest's foregroundServiceType, and each type carries its own
+            // permission gate. connectedDevice is satisfied by the BLE runtime
+            // permissions this service already requires; the library does not
+            // declare a location type, so an app without location permission
+            // no longer hits a SecurityException here.
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                buildNotification(neighborCount = discoveredDeviceIds.size),
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                } else {
+                    0
+                }
+            )
+            true
+        } catch (error: IllegalStateException) {
+            // ForegroundServiceStartNotAllowedException extends
+            // IllegalStateException, so this also covers API 31+ without
+            // referencing a class that older platforms do not have.
+            Log.w(TAG, "Foreground promotion refused; stopping background BLE service", error)
+            false
+        } catch (error: SecurityException) {
+            // Missing FOREGROUND_SERVICE_* permission on API 34+.
+            Log.w(TAG, "Foreground promotion denied; stopping background BLE service", error)
+            false
+        }
     }
 
     override fun onDestroy() {
@@ -106,7 +151,13 @@ class MunimBluetoothBackgroundService : Service() {
     private fun startBleSession(config: SessionConfig) {
         stopBleSession()
 
-        if (!BluetoothPermissionUtils.hasRequiredPermissions(applicationContext)) {
+        if (!BluetoothPermissionUtils.hasRequiredPermissions(
+                applicationContext,
+                BluetoothPermission.SCAN,
+                BluetoothPermission.CONNECT,
+                BluetoothPermission.ADVERTISE
+            )
+        ) {
             Log.w(TAG, "Unable to start background BLE session: missing runtime permissions")
             stopSelf()
             return
@@ -206,7 +257,7 @@ class MunimBluetoothBackgroundService : Service() {
         val data = AdvertiseData.Builder()
 
         serviceUUIDs.forEach { uuid ->
-            runCatching { ParcelUuid.fromString(uuid) }.getOrNull()?.let(data::addServiceUuid)
+            runCatching { parseBleParcelUuid(uuid) }.getOrNull()?.let(data::addServiceUuid)
         }
 
         val scanResponse = AdvertiseData.Builder()
@@ -261,17 +312,20 @@ class MunimBluetoothBackgroundService : Service() {
             for (index in 0 until services.length()) {
                 val serviceJson = services.getJSONObject(index)
                 val service = BluetoothGattService(
-                    UUID.fromString(serviceJson.getString("uuid")),
+                    parseBleUuid(serviceJson.getString("uuid")),
                     BluetoothGattService.SERVICE_TYPE_PRIMARY
                 )
                 val characteristics = serviceJson.optJSONArray("characteristics") ?: JSONArray()
                 for (characteristicIndex in 0 until characteristics.length()) {
                     val characteristicJson = characteristics.getJSONObject(characteristicIndex)
                     val characteristic = BluetoothGattCharacteristic(
-                        UUID.fromString(characteristicJson.getString("uuid")),
+                        parseBleUuid(characteristicJson.getString("uuid")),
                         propertiesFromJson(characteristicJson.optJSONArray("properties")),
-                        BluetoothGattCharacteristic.PERMISSION_READ or
-                            BluetoothGattCharacteristic.PERMISSION_WRITE
+                        characteristicPermissionsFromJson(
+                            characteristicJson.optJSONArray("permissions"),
+                            characteristicJson.optJSONArray("properties"),
+                            characteristicJson.getString("uuid")
+                        )
                     )
                     val characteristicInitialValue = optionalString(characteristicJson, "value")
                         ?.let { value ->
@@ -288,7 +342,7 @@ class MunimBluetoothBackgroundService : Service() {
                     for (descriptorIndex in 0 until descriptors.length()) {
                         val descriptorJson = descriptors.getJSONObject(descriptorIndex)
                         val descriptor = BluetoothGattDescriptor(
-                            UUID.fromString(descriptorJson.getString("uuid")),
+                            parseBleUuid(descriptorJson.getString("uuid")),
                             descriptorPermissionsFromJson(descriptorJson.optJSONArray("permissions"))
                         )
                         optionalString(descriptorJson, "value")?.let { value ->
@@ -353,6 +407,17 @@ class MunimBluetoothBackgroundService : Service() {
                 offset: Int,
                 characteristic: BluetoothGattCharacteristic
             ) {
+                if ((characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
+                    gattServer?.sendResponse(
+                        device,
+                        requestId,
+                        BluetoothGatt.GATT_READ_NOT_PERMITTED,
+                        offset,
+                        null
+                    )
+                    return
+                }
+
                 val value = characteristicValues[characteristicKey(characteristic)] ?: ByteArray(0)
                 if (offset > value.size) {
                     gattServer?.sendResponse(
@@ -516,7 +581,7 @@ class MunimBluetoothBackgroundService : Service() {
         val filters = serviceUUIDs.mapNotNull { uuid ->
             runCatching {
                 ScanFilter.Builder()
-                    .setServiceUuid(ParcelUuid.fromString(uuid))
+                    .setServiceUuid(parseBleParcelUuid(uuid))
                     .build()
             }.getOrNull()
         }
@@ -723,9 +788,75 @@ class MunimBluetoothBackgroundService : Service() {
                 "writeWithoutResponse" -> {
                     result = result or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
                 }
+                else -> throw IllegalArgumentException(
+                    "Unsupported restored GATT characteristic property '$property'"
+                )
             }
         }
         return result
+    }
+
+    private fun characteristicPermissionsFromJson(
+        permissions: JSONArray?,
+        properties: JSONArray?,
+        characteristicUuid: String
+    ): Int {
+        val propertyValues = jsonStrings(properties)
+        val hasReadProperty = "read" in propertyValues
+        val hasWriteProperty =
+            "write" in propertyValues || "writeWithoutResponse" in propertyValues
+
+        if (permissions == null) {
+            var defaults = 0
+            if (hasReadProperty) {
+                defaults = defaults or BluetoothGattCharacteristic.PERMISSION_READ
+            }
+            if (hasWriteProperty) {
+                defaults = defaults or BluetoothGattCharacteristic.PERMISSION_WRITE
+            }
+            return defaults
+        }
+
+        val permissionValues = jsonStrings(permissions)
+        val allowed = setOf(
+            "read",
+            "write",
+            "readEncrypted",
+            "writeEncrypted",
+            "readEncryptedMitm",
+            "writeEncryptedMitm"
+        )
+        val invalid = permissionValues.firstOrNull { it !in allowed }
+        require(invalid == null) {
+            "Unsupported restored GATT characteristic permission '$invalid'"
+        }
+
+        val readPermissions = permissionValues.filter {
+            it == "read" || it == "readEncrypted" || it == "readEncryptedMitm"
+        }
+        val writePermissions = permissionValues.filter {
+            it == "write" || it == "writeEncrypted" || it == "writeEncryptedMitm"
+        }
+        require(readPermissions.size == if (hasReadProperty) 1 else 0) {
+            "Characteristic $characteristicUuid must specify exactly one read permission when and only when it has the read property"
+        }
+        require(writePermissions.size == if (hasWriteProperty) 1 else 0) {
+            "Characteristic $characteristicUuid must specify exactly one write permission when and only when it has a write property"
+        }
+
+        return permissionValues.fold(0) { result, permission ->
+            result or when (permission) {
+                "read" -> BluetoothGattCharacteristic.PERMISSION_READ
+                "write" -> BluetoothGattCharacteristic.PERMISSION_WRITE
+                "readEncrypted" -> BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED
+                "writeEncrypted" -> BluetoothGattCharacteristic.PERMISSION_WRITE_ENCRYPTED
+                "readEncryptedMitm" ->
+                    BluetoothGattCharacteristic.PERMISSION_READ_ENCRYPTED_MITM
+                "writeEncryptedMitm" ->
+                    BluetoothGattCharacteristic.PERMISSION_WRITE_ENCRYPTED_MITM
+                else -> error("Permission was validated above")
+            }
+        }
     }
 
     private fun descriptorPermissionsFromJson(permissions: JSONArray?): Int {
@@ -757,6 +888,11 @@ class MunimBluetoothBackgroundService : Service() {
         for (index in 0 until array.length()) {
             block(array.optString(index))
         }
+    }
+
+    private fun jsonStrings(array: JSONArray?): List<String> {
+        if (array == null) return emptyList()
+        return List(array.length()) { index -> array.getString(index) }
     }
 
     private fun optionalString(json: org.json.JSONObject, key: String): String? {

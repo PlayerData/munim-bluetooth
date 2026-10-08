@@ -17,8 +17,8 @@ import com.facebook.proguard.annotations.DoNotStrip
 @Keep
 enum class BluetoothPhy(@DoNotStrip @Keep val value: Int) {
   LE1M(0),
-  LE2M(1),
-  LECODED(2);
+  LECODED(1),
+  LE2M(2);
 
   companion object
 }

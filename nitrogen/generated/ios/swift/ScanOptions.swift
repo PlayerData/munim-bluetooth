@@ -18,7 +18,7 @@ public extension ScanOptions {
   /**
    * Create a new instance of `ScanOptions`.
    */
-  init(serviceUUIDs: [String]?, allowDuplicates: Bool?, scanMode: ScanMode?) {
+  init(serviceUUIDs: [String]?, allowDuplicates: Bool?, scanMode: ScanMode?, rssiThreshold: Double?, namePrefix: String?, deviceName: String?, deviceAddress: String?, manufacturerId: Double?, manufacturerData: String?, manufacturerDataMask: String?, reportDelayMs: Double?, callbackType: ScanCallbackType?, matchMode: ScanMatchMode?, legacy: Bool?, phy: ScanPhy?) {
     self.init({ () -> bridge.std__optional_std__vector_std__string__ in
       if let __unwrappedValue = serviceUUIDs {
         return bridge.create_std__optional_std__vector_std__string__({ () -> bridge.std__vector_std__string_ in
@@ -40,6 +40,78 @@ public extension ScanOptions {
     }(), { () -> bridge.std__optional_ScanMode_ in
       if let __unwrappedValue = scanMode {
         return bridge.create_std__optional_ScanMode_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_double_ in
+      if let __unwrappedValue = rssiThreshold {
+        return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = namePrefix {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = deviceName {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = deviceAddress {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_double_ in
+      if let __unwrappedValue = manufacturerId {
+        return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = manufacturerData {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_std__string_ in
+      if let __unwrappedValue = manufacturerDataMask {
+        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_double_ in
+      if let __unwrappedValue = reportDelayMs {
+        return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_ScanCallbackType_ in
+      if let __unwrappedValue = callbackType {
+        return bridge.create_std__optional_ScanCallbackType_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_ScanMatchMode_ in
+      if let __unwrappedValue = matchMode {
+        return bridge.create_std__optional_ScanMatchMode_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_bool_ in
+      if let __unwrappedValue = legacy {
+        return bridge.create_std__optional_bool_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_ScanPhy_ in
+      if let __unwrappedValue = phy {
+        return bridge.create_std__optional_ScanPhy_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -72,6 +144,129 @@ public extension ScanOptions {
   
   @inline(__always)
   var scanMode: ScanMode? {
-    return self.__scanMode.value
+    return (bridge.has_value_std__optional_ScanMode_(self.__scanMode) ? bridge.get_std__optional_ScanMode_(self.__scanMode) : nil)
+  }
+  
+  @inline(__always)
+  var rssiThreshold: Double? {
+    return { () -> Double? in
+      if bridge.has_value_std__optional_double_(self.__rssiThreshold) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__rssiThreshold)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var namePrefix: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__namePrefix) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__namePrefix)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var deviceName: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__deviceName) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__deviceName)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var deviceAddress: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__deviceAddress) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__deviceAddress)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var manufacturerId: Double? {
+    return { () -> Double? in
+      if bridge.has_value_std__optional_double_(self.__manufacturerId) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__manufacturerId)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var manufacturerData: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__manufacturerData) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__manufacturerData)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var manufacturerDataMask: String? {
+    return { () -> String? in
+      if bridge.has_value_std__optional_std__string_(self.__manufacturerDataMask) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__manufacturerDataMask)
+        return String(__unwrapped)
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var reportDelayMs: Double? {
+    return { () -> Double? in
+      if bridge.has_value_std__optional_double_(self.__reportDelayMs) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__reportDelayMs)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var callbackType: ScanCallbackType? {
+    return (bridge.has_value_std__optional_ScanCallbackType_(self.__callbackType) ? bridge.get_std__optional_ScanCallbackType_(self.__callbackType) : nil)
+  }
+  
+  @inline(__always)
+  var matchMode: ScanMatchMode? {
+    return (bridge.has_value_std__optional_ScanMatchMode_(self.__matchMode) ? bridge.get_std__optional_ScanMatchMode_(self.__matchMode) : nil)
+  }
+  
+  @inline(__always)
+  var legacy: Bool? {
+    return { () -> Bool? in
+      if bridge.has_value_std__optional_bool_(self.__legacy) {
+        let __unwrapped = bridge.get_std__optional_bool_(self.__legacy)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var phy: ScanPhy? {
+    return (bridge.has_value_std__optional_ScanPhy_(self.__phy) ? bridge.get_std__optional_ScanPhy_(self.__phy) : nil)
   }
 }

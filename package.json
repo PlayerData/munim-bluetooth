@@ -1,6 +1,6 @@
 {
   "name": "munim-bluetooth",
-  "version": "0.4.4",
+  "version": "0.9.0",
   "description": "A comprehensive React Native Bluetooth library for BLE central/peripheral, Android Classic Bluetooth, LE L2CAP, Apple Multipeer Connectivity, and Expo support",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
@@ -12,7 +12,8 @@
     "clean": "git clean -dfX",
     "release": "semantic-release",
     "build": "npm run typecheck && bob build",
-    "codegen": "nitrogen --logLevel=\"debug\" && npm run build && node post-script.js"
+    "codegen": "nitrogen --logLevel=\"debug\" && node scripts/patch-nitro-optionals.js && npm run build && node post-script.js",
+    "release:local": "node scripts/release-local.mjs"
   },
   "keywords": [
     "react-native",
@@ -86,28 +87,38 @@
     }
   },
   "devDependencies": {
-    "@react-native/gradle-plugin": "^0.83.9",
+    "@react-native/gradle-plugin": "^0.87.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "^19.2.14",
     "conventional-changelog-conventionalcommits": "^9.3.1",
-    "nitrogen": "^0.35.6",
+    "nitrogen": "0.36.5",
     "react": "19.2.3",
-    "react-native": "0.83.1",
-    "react-native-builder-bob": "^0.40.18",
-    "react-native-nitro-modules": "^0.35.6",
-    "semantic-release": "^25.0.3",
+    "react-native": "0.87.1",
+    "react-native-builder-bob": "^0.43.1",
+    "react-native-nitro-modules": "0.36.5",
+    "semantic-release": "^25.0.9",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": "*"
+    "react-native-nitro-modules": ">=0.36.5 <1"
   },
   "overrides": {
-    "minimatch@3.1.5": {
-      "brace-expansion": "1.1.14"
+    "brace-expansion@1.x": "1.1.21",
+    "brace-expansion@2.x": "2.1.7",
+    "brace-expansion@>=3 <6": "5.0.12",
+    "ip-address@10.x": "10.7.3",
+    "joi@17.x": "17.13.8",
+    "js-yaml@3.x": "3.15.2",
+    "js-yaml@4.x": "4.3.2",
+    "tar@7.x": "7.5.22",
+    "undici@6.x": "6.29.0",
+    "undici@7.x": "7.30.0",
+    "@semantic-release/npm": {
+      "npm": "npm:@semantic-release/error@4.0.0"
     }
   },
   "eslintConfig": {

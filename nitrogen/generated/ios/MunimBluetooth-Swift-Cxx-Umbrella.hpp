@@ -16,28 +16,42 @@ namespace margelo::nitro::munimbluetooth { struct AdvertisingOptions; }
 namespace margelo::nitro::munimbluetooth { struct BackgroundSessionOptions; }
 // Forward declaration of `BluetoothCapabilities` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct BluetoothCapabilities; }
+// Forward declaration of `BluetoothDeviceType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class BluetoothDeviceType; }
 // Forward declaration of `BluetoothPhyOption` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BluetoothPhyOption; }
 // Forward declaration of `BluetoothPhy` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BluetoothPhy; }
 // Forward declaration of `BondState` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class BondState; }
+// Forward declaration of `BondedDevice` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct BondedDevice; }
 // Forward declaration of `CharacteristicValue` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct CharacteristicValue; }
+// Forward declaration of `ConnectOptions` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct ConnectOptions; }
+// Forward declaration of `ConnectionPriority` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ConnectionPriority; }
 // Forward declaration of `DescriptorValue` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct DescriptorValue; }
 // Forward declaration of `ExtendedAdvertisingOptions` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct ExtendedAdvertisingOptions; }
+// Forward declaration of `GATTCharacteristicPermission` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class GATTCharacteristicPermission; }
 // Forward declaration of `GATTCharacteristic` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTCharacteristic; }
 // Forward declaration of `GATTDescriptor` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTDescriptor; }
+// Forward declaration of `GATTQueueDiagnostic` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct GATTQueueDiagnostic; }
 // Forward declaration of `GATTService` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct GATTService; }
 // Forward declaration of `HybridMunimBluetoothSpec` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { class HybridMunimBluetoothSpec; }
 // Forward declaration of `L2CAPChannel` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct L2CAPChannel; }
+// Forward declaration of `ManufacturerDataEntry` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct ManufacturerDataEntry; }
 // Forward declaration of `MultipeerDiscoveryInfoEntry` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct MultipeerDiscoveryInfoEntry; }
 // Forward declaration of `MultipeerEncryptionPreference` to properly resolve imports.
@@ -48,14 +62,30 @@ namespace margelo::nitro::munimbluetooth { enum class MultipeerPeerState; }
 namespace margelo::nitro::munimbluetooth { struct MultipeerPeer; }
 // Forward declaration of `MultipeerSessionOptions` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct MultipeerSessionOptions; }
+// Forward declaration of `PeripheralRequestMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class PeripheralRequestMode; }
+// Forward declaration of `PeripheralRequestOptions` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { struct PeripheralRequestOptions; }
+// Forward declaration of `PeripheralRequestStatus` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class PeripheralRequestStatus; }
 // Forward declaration of `PhyStatus` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct PhyStatus; }
+// Forward declaration of `ScanCallbackType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanCallbackType; }
+// Forward declaration of `ScanMatchMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanMatchMode; }
 // Forward declaration of `ScanMode` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class ScanMode; }
 // Forward declaration of `ScanOptions` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct ScanOptions; }
+// Forward declaration of `ScanPhy` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class ScanPhy; }
 // Forward declaration of `ServiceDataEntry` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { struct ServiceDataEntry; }
+// Forward declaration of `SubrateMode` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class SubrateMode; }
+// Forward declaration of `WriteLengthType` to properly resolve imports.
+namespace margelo::nitro::munimbluetooth { enum class WriteLengthType; }
 // Forward declaration of `WriteType` to properly resolve imports.
 namespace margelo::nitro::munimbluetooth { enum class WriteType; }
 
@@ -64,26 +94,41 @@ namespace margelo::nitro::munimbluetooth { enum class WriteType; }
 #include "AdvertisingOptions.hpp"
 #include "BackgroundSessionOptions.hpp"
 #include "BluetoothCapabilities.hpp"
+#include "BluetoothDeviceType.hpp"
 #include "BluetoothPhy.hpp"
 #include "BluetoothPhyOption.hpp"
 #include "BondState.hpp"
+#include "BondedDevice.hpp"
 #include "CharacteristicValue.hpp"
+#include "ConnectOptions.hpp"
+#include "ConnectionPriority.hpp"
 #include "DescriptorValue.hpp"
 #include "ExtendedAdvertisingOptions.hpp"
 #include "GATTCharacteristic.hpp"
+#include "GATTCharacteristicPermission.hpp"
 #include "GATTDescriptor.hpp"
+#include "GATTQueueDiagnostic.hpp"
 #include "GATTService.hpp"
 #include "HybridMunimBluetoothSpec.hpp"
 #include "L2CAPChannel.hpp"
+#include "ManufacturerDataEntry.hpp"
 #include "MultipeerDiscoveryInfoEntry.hpp"
 #include "MultipeerEncryptionPreference.hpp"
 #include "MultipeerPeer.hpp"
 #include "MultipeerPeerState.hpp"
 #include "MultipeerSessionOptions.hpp"
+#include "PeripheralRequestMode.hpp"
+#include "PeripheralRequestOptions.hpp"
+#include "PeripheralRequestStatus.hpp"
 #include "PhyStatus.hpp"
+#include "ScanCallbackType.hpp"
+#include "ScanMatchMode.hpp"
 #include "ScanMode.hpp"
 #include "ScanOptions.hpp"
+#include "ScanPhy.hpp"
 #include "ServiceDataEntry.hpp"
+#include "SubrateMode.hpp"
+#include "WriteLengthType.hpp"
 #include "WriteType.hpp"
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/Result.hpp>

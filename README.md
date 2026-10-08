@@ -112,23 +112,29 @@
 | Capability | iOS | Android | Notes |
 | --- | --- | --- | --- |
 | Peripheral advertising | ✅ | ✅ | iOS only allows CoreBluetooth-supported advertising keys such as local name and service UUIDs. Android splits primary advertising data and scan response data to stay within BLE size limits. |
-| Peripheral GATT services | ✅ | ✅ | Read and write requests are handled natively on both platforms. Included services are wired when supplied in `setServices()`. |
+| Peripheral GATT services | ✅ | ✅ | Read and write requests are handled natively on both platforms. Characteristics can require encrypted access; authenticated-MITM permissions are Android-only because CoreBluetooth has no matching public option. |
 | Peripheral notify/indicate subscriptions | ✅ | ✅ | Subscribe/unsubscribe events are emitted when centrals change CCC state. |
-| Central scan | ✅ | ✅ | Android scan failures emit `scanFailed`. |
-| Central connect/disconnect | ✅ | ✅ | `connect()` has a native 15 second timeout. |
+| Central scan | ✅ | ✅ | Service UUID, name, and manufacturer filters on both platforms (iOS applies name/manufacturer in-process); Android also takes address filters and `ScanSettings`. Android scan failures, including its 5-starts-per-30-seconds throttle, emit `scanFailed`. |
+| Central connect/disconnect | ✅ | ✅ | `connect()` times out after 15 seconds by default (`timeoutMs` configurable); `autoConnect` maps to Android background connect and iOS 17+ auto-reconnect. |
 | Central service discovery | ✅ | ✅ | Emits `servicesDiscovered` in addition to resolving the Promise. Native timeout rejects if callbacks do not arrive. |
 | Central characteristic read | ✅ | ✅ | Resolves with hex-encoded values. Native timeout rejects if callbacks do not arrive. |
-| Central characteristic write | ✅ | ✅ | Supports `write` and `writeWithoutResponse`. With-response writes have native timeout protection. |
+| Central characteristic write | ✅ | ✅ | Supports `write` and `writeWithoutResponse`. With-response writes have native timeout protection; write-without-response is flow controlled, and `getMaximumWriteLength()` reports the payload limit. |
 | Central descriptor read/write | ✅ | ✅ | Uses `readDescriptor()` and `writeDescriptor()` with hex-encoded values. Native timeout rejects if callbacks do not arrive. |
 | Central notify/indicate subscription | ✅ | ✅ | Values emit through `characteristicValueChanged`. |
 | RSSI read | ✅ | ✅ | Resolves with dBm. |
-| ATT MTU request | ❌ | ✅ | Android supports `requestMTU()`. iOS negotiates ATT MTU internally and does not expose a public setter. |
+| ATT MTU request | ➖ | ✅ | Android negotiates the requested MTU. iOS negotiates the MTU itself; `requestMTU()` resolves with the MTU in effect. |
+| Connection priority | ➖ | ✅ | Android `requestConnectionPriority()`; iOS resolves `false`. |
+| GATT cache refresh / Service Changed | ✅ | ✅ | Both emit `servicesChanged` (Android 12+). `refreshGattCache()` is Android-only; iOS resolves `false`. |
+| Enable Bluetooth prompt | ❌ | ✅ | Android `requestEnable()` shows the system dialog; iOS resolves with the current state. |
 | BLE PHY read/preference | ❌ | ✅ | Android 8+ supports `readPhy()` and `setPreferredPhy()` when hardware allows it. |
-| Pairing/bond state | ❌ | ✅ | Android supports bond state and starts/removes bonds. iOS handles pairing automatically and does not expose bond management through CoreBluetooth. |
+| Pairing/bond state | ❌ | ✅ | Android supports bond state, lists bonded devices (`getBondedDevices()`), and starts/removes bonds. iOS handles pairing automatically and does not expose bond management through CoreBluetooth. |
 | Extended advertising | ❌ | ✅ | Android 8+ supports `startExtendedAdvertising()` on hardware with LE extended advertising. iOS does not expose BLE extended advertising. |
-| BLE L2CAP channel streams | ✅ | ✅ | iOS uses CoreBluetooth LE Credit Based Channels. Android requires Android 10+ for LE CoC sockets. |
+| BLE L2CAP channel streams | ✅ | ✅ | iOS uses CoreBluetooth LE Credit Based Channels. Android requires Android 10+ for LE CoC sockets. Published and outbound channels require encryption by default. |
 | Classic Bluetooth RFCOMM | ❌ | ✅ | Android supports discovery, SPP-style RFCOMM client connections, server/listener sockets, disconnect, write, and receive events. iOS apps cannot use public Classic Bluetooth RFCOMM APIs. |
-| Apple Multipeer Connectivity | ✅ | ❌ | iOS/iPadOS devices can discover peers, auto-invite/accept sessions, and exchange encrypted messages. Android cannot join Apple's Multipeer sessions; use BLE/GATT for iOS-to-Android. |
+| Connection subrating | ❌ | ✅ | Android 16 QPR2+ (API 36.1): `requestSubrateMode()` plus `subrateChanged` events. iOS picks connection parameters itself. |
+| Bond / encryption events | ❌ | ✅ | `bondStateChanged` for every device (with `bondLossReason` on API 36.1+), `bondKeyMissing` and `encryptionChanged` on Android 16+. |
+| Bluetooth Channel Sounding (distance) | ✅ | ❌ | iOS 27+ on hardware reporting `supportsChannelSounding` (N1-chip iPhone + Bluetooth 6 Channel Sounding accessory), foreground only. Needs an app built with Xcode 27. |
+| Apple Multipeer Connectivity | ✅ | ❌ | iOS/iPadOS devices can discover peers, approve incoming invitations explicitly, manually invite selected peers, and exchange encrypted messages. Android cannot join Apple's Multipeer sessions; use BLE/GATT for iOS-to-Android. |
 
 Call `getCapabilities()` at runtime when you need optional behavior. Platform support can still vary by OS version, hardware, permissions, and app background state.
 
@@ -206,37 +212,44 @@ With the included Expo config plugin, the default `munim-mesh` Multipeer service
 
 ### Android Setup
 
-For Android, add the following permissions to your `AndroidManifest.xml`:
+The library does not merge optional Bluetooth permissions into your app. Declare only the capabilities your app uses.
+
+For a central app that scans and connects, add:
 
 ```xml
-<uses-permission android:name="android.permission.BLUETOOTH" />
-<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+<uses-permission
+  android:name="android.permission.BLUETOOTH_SCAN"
+  android:usesPermissionFlags="neverForLocation" />
 <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 ```
 
-**For Expo projects**, add these permissions to your `app.json`:
+An app that connects to a known device without scanning can omit `BLUETOOTH_ADMIN`, `ACCESS_FINE_LOCATION`, and `BLUETOOTH_SCAN`. Add `BLUETOOTH_ADVERTISE` only when using peripheral advertising or background sessions that advertise.
+
+The example above asserts that scan results are never used to derive physical location. This avoids a location permission on Android 12+ and is required for scan-result delivery on devices that enforce that distinction. Android may filter some beacon formats under this mode. If your app derives location from Bluetooth scans or needs every beacon format, remove `neverForLocation`, remove `android:maxSdkVersion="30"` from `ACCESS_FINE_LOCATION`, and request location permission at runtime.
+
+**For Expo projects**, select capabilities through the included config plugin. Central mode is the default:
 
 ```json
 {
   "expo": {
-    "android": {
-      "permissions": [
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_ADVERTISE",
-        "android.permission.BLUETOOTH_SCAN",
-        "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+    "plugins": [
+      [
+        "munim-bluetooth",
+        {
+          "androidBluetoothPermissions": ["scan", "connect"]
+        }
       ]
-    }
+    ]
   }
 }
 ```
+
+Use `["connect"]` for connection-only apps, or add `"advertise"` for peripheral/background advertising. Set `androidBluetoothPermissions` to `false` to manage every Android permission outside the plugin.
+
+**Build defaults.** The Android library compiles against `compileSdk` 37 (Android 17) with `minSdk` 24, matching React Native 0.87 (AGP 9.2, Kotlin 2.2). An app's `rootProject.ext` values (`compileSdkVersion`, `minSdkVersion`, `targetSdkVersion`, `ndkVersion`) override them. Android 16/17 APIs are only called behind runtime version checks, so the library still runs on Android 7.0+ devices.
 
 ## Device-to-Device Messaging
 
@@ -250,11 +263,14 @@ Advertising payload caveat: Android can advertise manufacturer data, service dat
 
 ### Apple Multipeer Connectivity
 
-For iOS-to-iOS or iPadOS-to-iOS communication, `startMultipeerSession()` exposes Apple's Multipeer Connectivity as a higher-level peer transport. It advertises and browses using a Bonjour service type, auto-invites discovered peers by default, accepts incoming invitations by default, and sends hex-encoded payloads to one peer or all connected peers.
+For iOS-to-iOS or iPadOS-to-iOS communication, `startMultipeerSession()` exposes Apple's Multipeer Connectivity as a higher-level peer transport. It advertises and browses using a Bonjour service type and sends hex-encoded payloads to one peer or all connected peers. For security, discovery does not invite or accept unknown peers by default. The app must manually invite a selected discovered peer or accept/reject each incoming invitation.
 
 ```typescript
 import {
+  acceptMultipeerInvitation,
   addEventListener,
+  inviteMultipeerPeer,
+  rejectMultipeerInvitation,
   sendMultipeerMessage,
   startMultipeerSession,
   stopMultipeerSession,
@@ -264,9 +280,21 @@ startMultipeerSession({
   serviceType: 'munim-mesh',
   displayName: 'Sheehan iPhone',
   discoveryInfo: [{ key: 'role', value: 'wallet-peer' }],
-  autoInvite: true,
-  autoAcceptInvitations: true,
   encryptionPreference: 'required',
+})
+
+addEventListener('multipeerPeerFound', (peer) => {
+  if (isExpectedPeer(peer)) {
+    inviteMultipeerPeer(peer.id)
+  }
+})
+
+addEventListener('multipeerInvitationReceived', (invitation) => {
+  if (isExpectedPeerId(invitation.peerId)) {
+    acceptMultipeerInvitation(invitation.invitationId)
+  } else {
+    rejectMultipeerInvitation(invitation.invitationId)
+  }
 })
 
 addEventListener('multipeerPeerStateChanged', async (peer) => {
@@ -285,6 +313,10 @@ stopMultipeerSession()
 
 Multipeer service types must be 1-15 lowercase letters/numbers/hyphens, and the matching Bonjour entry must be declared in iOS `Info.plist` as `_<serviceType>._tcp` (for example `_munim-mesh._tcp`). The Expo config plugin adds `_munim-mesh._tcp` by default and accepts a `multipeerServiceTypes` option for custom service types.
 
+Incoming invitations use opaque, runtime-only IDs. At most 32 are retained; they expire after the configured invitation timeout (capped at 60 seconds) and are rejected automatically. Setting `autoInvite` or `autoAcceptInvitations` to `true` is an explicit broad trust decision and should only be used when discovery itself is authenticated.
+
+To prevent unbounded native memory growth while JavaScript is not observing events, iOS retains at most 256 queued events and approximately 1 MiB. Discovery/RSSI/latest-value events are coalesced first, and high-rate data events are dropped before lifecycle events when pressure remains.
+
 ## Background and Terminated Behavior
 
 `startBackgroundSession()` starts a best-effort BLE session for apps that need nearby communication after the user leaves the app.
@@ -295,14 +327,26 @@ Multipeer service types must be 1-15 lowercase letters/numbers/hyphens, and the 
 | App terminated by the system | Best-effort CoreBluetooth state restoration is enabled when background modes are present. The package uses restoration identifiers and emits `backgroundSessionRestored` when CoreBluetooth restores central/peripheral state. On iOS 26 and later, Apple's Bluetooth relaunch rules require AccessorySetupKit eligibility for background relaunch, so arbitrary phone-to-phone BLE mesh apps should not depend on terminated-state relaunch. | The foreground service persists its session config and uses `START_STICKY`; if the process is recreated, it restores scan, advertising, and a native GATT characteristic store from the services configured with `setServices()`. |
 | User force-quits / force-stops the app | Not supported by iOS for ongoing app-owned BLE work. The user has explicitly stopped the app. | Not supported after Android force stop. The OS prevents the app from running again until the user opens it or another allowed user/system action starts it. |
 
+The Android background service is declared with `foregroundServiceType="connectedDevice"` only and starts with that type, which Android 14+ gates on the BLE runtime permissions the session already requires. The library does not declare `FOREGROUND_SERVICE_LOCATION` or a `location` service type. If your app needs location while backgrounded for its own reasons, declare that yourself (the location permission, `FOREGROUND_SERVICE_LOCATION`, and your own foreground service); do not widen this library's service type, because Android 14+ throws a `SecurityException` at `startForeground` when a declared type's permission is missing.
+
 Background sessions are for keeping discovery and small GATT messages alive. They do not make JavaScript execute indefinitely. If the process is alive, normal JS events such as `peripheralWriteRequest` and `characteristicValueChanged` continue. After a system restart, iOS may relaunch the app only when Apple's current CoreBluetooth restoration rules allow it; Android restores native scan/advertise/GATT state in the foreground service, and app-specific business logic should reconcile state when the app opens again.
 
 ```typescript
 import {
+  requestBluetoothPermission,
   setServices,
   startBackgroundSession,
   stopBackgroundSession,
 } from 'munim-bluetooth'
+
+const hasBackgroundPermissions = await requestBluetoothPermission([
+  'scan',
+  'connect',
+  'advertise',
+])
+if (!hasBackgroundPermissions) {
+  throw new Error('Background Bluetooth permission was not granted')
+}
 
 setServices([
   {
@@ -311,6 +355,7 @@ setServices([
       {
         uuid: CHARACTERISTIC_UUID,
         properties: ['read', 'write', 'writeWithoutResponse', 'notify'],
+        permissions: ['readEncrypted', 'writeEncrypted'],
         value: '70696e67',
       },
     ],
@@ -334,7 +379,17 @@ stopBackgroundSession()
 ### Basic Usage - Peripheral Mode
 
 ```typescript
-import { startAdvertising, stopAdvertising, setServices } from 'munim-bluetooth'
+import {
+  requestBluetoothPermission,
+  startAdvertising,
+  stopAdvertising,
+  setServices,
+} from 'munim-bluetooth'
+
+const canAdvertise = await requestBluetoothPermission(['advertise'])
+if (!canAdvertise) {
+  throw new Error('Bluetooth advertising permission was not granted')
+}
 
 // Start advertising with basic options
 startAdvertising({
@@ -375,7 +430,7 @@ import {
   subscribeToCharacteristic,
 } from 'munim-bluetooth'
 
-const hasPermission = await requestBluetoothPermission()
+const hasPermission = await requestBluetoothPermission(['scan', 'connect'])
 if (!hasPermission) {
   throw new Error('Bluetooth permission was not granted')
 }
@@ -532,6 +587,12 @@ Starts BLE advertising with the specified options.
   - `manufacturerData?` (string): Manufacturer data in hex format (legacy Android advertising support)
   - `advertisingData?` (AdvertisingDataTypes): Platform-aware advertising data. Android can advertise payload fields; iOS advertises local name and service UUIDs.
 
+BLE legacy advertisements have a small payload. When advertising 128-bit
+service UUIDs on iOS, keep `localName` short or omit it so the service UUID stays
+discoverable by Android service-filtered scans. For maximum interoperability,
+scan without a native filter and validate the discovered service UUID or local
+name in application code.
+
 #### `updateAdvertisingData(advertisingData)`
 
 Updates the advertising data while advertising is active.
@@ -556,7 +617,12 @@ Sets GATT services and characteristics.
 
 **Parameters:**
 
-- `services` (array): Array of service objects
+- `services` (array): Array of service objects. Each characteristic has `properties` and may set `permissions` to one read choice and/or one write choice:
+  - Plaintext: `read`, `write`
+  - Link encryption required: `readEncrypted`, `writeEncrypted`
+  - Authenticated MITM protection: `readEncryptedMitm`, `writeEncryptedMitm` (Android only; iOS rejects these because CoreBluetooth has no equivalent public permission)
+
+When `permissions` is omitted, existing behavior is preserved: read/write properties receive plaintext permissions. When it is supplied, permissions must match the characteristic properties exactly; conflicting, unknown, or mismatched choices are rejected instead of falling back to plaintext. Android background GATT restoration preserves the configured permission choices.
 
 #### `updateCharacteristicValue(serviceUUID, characteristicUUID, value, notify)`
 
@@ -566,19 +632,38 @@ Updates a local peripheral characteristic value. When `notify` is `true`, the ne
 
 #### `isBluetoothEnabled()`
 
-Checks if Bluetooth is enabled on the device.
+Checks if Bluetooth is enabled on the device. On iOS the answer waits (up to 10 seconds) for CoreBluetooth to report its first real state instead of returning `false` while the state is still unknown.
 
 **Returns:** Promise<boolean>
 
-#### `requestBluetoothPermission()`
+#### `requestEnable()`
 
-Requests Bluetooth permissions (Android) or checks authorization status (iOS).
+Asks the user to turn Bluetooth on. Android shows the system `ACTION_REQUEST_ENABLE` dialog and resolves `true` if the user accepts (`true` immediately if Bluetooth is already on). It needs a foreground Activity and, on Android 12+, the `connect` permission. iOS apps cannot switch Bluetooth on, so iOS resolves with whether it is currently on.
+
+**Returns:** Promise<boolean>
+
+#### `requestBluetoothPermission(permissions?)`
+
+Requests only the selected Android capabilities, or the Bluetooth permission on iOS. Supported capabilities are `scan`, `connect`, and `advertise`. The default is `['scan', 'connect']`; advertising is never requested implicitly.
+
+On iOS, importing the package no longer shows the Bluetooth permission prompt: CoreBluetooth managers are created on first use. `requestBluetoothPermission()` shows the prompt when the user has not decided yet and resolves once they answer (up to 60 seconds); it resolves `false` immediately when access was denied or restricted. Any other central or peripheral call (`isBluetoothEnabled()`, `startScan()`, `startAdvertising()`, ...) also creates the manager and can show the prompt, so call `requestBluetoothPermission()` first to control when that happens. Until permission is granted, synchronous calls such as `startScan()` throw a "permission has not been granted yet" error.
+
+```typescript
+await requestBluetoothPermission(['connect'])
+await requestBluetoothPermission(['advertise'])
+```
 
 **Returns:** Promise<boolean>
 
 #### `getCapabilities()`
 
 Returns the platform/device Bluetooth feature set.
+
+Besides the long-standing flags, it reports:
+
+- `supportsChannelSounding`: iOS 27+ `CBCentralManager.supports(.channelSounding)` (hardware and region). Always `false` on Android, older iOS, or apps built with Xcode older than 27.
+- `supportsLeHighDataThroughputPhy`: Android 17+ (API 37) `BluetoothAdapter.isLeHighDataThroughputPhySupported()`. Always `false` on iOS.
+- `supportsConnectionSubrating`: Android 16 QPR2+ (API 36.1), where `requestSubrateMode()` exists. Always `false` on iOS.
 
 **Returns:** Promise<BluetoothCapabilities>
 
@@ -607,8 +692,8 @@ Starts Apple Multipeer Connectivity discovery and messaging on iOS/iPadOS.
 - `serviceType` (string): Bonjour service type, 1-15 lowercase letters/numbers/hyphens.
 - `displayName?` (string): Name shown to nearby peers.
 - `discoveryInfo?` (`{ key: string; value: string }[]`): Small discovery metadata.
-- `autoInvite?` (boolean): Automatically invite discovered peers. Defaults to `true`.
-- `autoAcceptInvitations?` (boolean): Automatically accept incoming invitations. Defaults to `true`.
+- `autoInvite?` (boolean): Automatically invite every discovered peer. Defaults to `false`; prefer `inviteMultipeerPeer(peerId)` after app-level approval.
+- `autoAcceptInvitations?` (boolean): Automatically accept every incoming invitation. Defaults to `false`; prefer the invitation event and explicit response APIs.
 - `inviteTimeout?` (number): Invitation timeout in seconds. Defaults to `30`.
 - `encryptionPreference?` (`'none' | 'optional' | 'required'`): Defaults to `required`.
 
@@ -619,6 +704,10 @@ Stops the local Multipeer advertiser, browser, and session.
 #### `inviteMultipeerPeer(peerId)`
 
 Invites a discovered Multipeer peer when `autoInvite` is disabled or you want manual control.
+
+#### `acceptMultipeerInvitation(invitationId)`, `rejectMultipeerInvitation(invitationId)`
+
+Responds once to a pending `multipeerInvitationReceived` event. IDs are opaque, bounded, and expire automatically; unknown, reused, or expired IDs are rejected.
 
 #### `getMultipeerPeers()`
 
@@ -638,20 +727,46 @@ Starts scanning for BLE devices.
   - `serviceUUIDs?` (string[]): Filter by service UUIDs
   - `allowDuplicates?` (boolean): Allow duplicate scan results
   - `scanMode?` ('lowPower' | 'balanced' | 'lowLatency'): Scan mode
+  - `rssiThreshold?` (number): Drop results weaker than this RSSI (dBm). Filtered in-process everywhere; Android 16 QPR2+ (API 36.1) also hands it to the controller (`ScanSettings.Builder.setRssiThreshold`, clamped to -127...20) so weak advertisements never wake the app
+  - `namePrefix?` (string): Only report names starting with this prefix, filtered in-process
+  - `deviceName?` (string): Only report this exact advertised/local name. Android `ScanFilter.setDeviceName`; iOS filters in-process.
+  - `deviceAddress?` (string): Android only. Only report this MAC address (`ScanFilter.setDeviceAddress`). Ignored on iOS, which has no MAC addresses.
+  - `manufacturerId?` (number): Only report devices advertising manufacturer data for this company identifier. Android `ScanFilter.setManufacturerData`; iOS filters in-process.
+  - `manufacturerData?` (hex string): Prefix the manufacturer payload (after the company identifier) must match. Requires `manufacturerId`.
+  - `manufacturerDataMask?` (hex string): Same length as `manufacturerData`; 1 bits must match, 0 bits are ignored.
+  - Android `ScanSettings` (ignored on iOS):
+    - `reportDelayMs?` (number): Batch results and deliver them every N ms. Needs offloaded batch scanning; unsupported hardware reports `scanFailed`.
+    - `callbackType?` (`'allMatches' | 'firstMatch' | 'matchLost'`): `firstMatch`/`matchLost` need at least one filter and hardware filter support. `matchLost` results arrive as a `deviceLost` event.
+    - `matchMode?` (`'aggressive' | 'sticky'`)
+    - `legacy?` (boolean, Android 8+): Defaults to `true`. Set `false` to also receive extended advertisements.
+    - `phy?` (`'le1m' | 'leCoded' | 'allSupported'`, Android 8+): Only applies when `legacy` is `false`.
+
+Android filters are combined the way the platform does it: service UUIDs are alternatives (one `ScanFilter` each), and the name/address/manufacturer criteria apply to every one of them.
+
+Android allows an app only 5 scan starts per 30 seconds and silently ignores further starts. The library counts its own starts; a 6th start inside the window is not attempted and emits `scanFailed` with `errorCode: 6` and `retryAfterMs` instead of leaving the app waiting for results that never come.
+
+On Android, an unfiltered scan can be more reliable for iOS peripherals whose
+128-bit service UUID was moved out of the primary legacy advertisement because
+of payload limits. Filter the emitted devices in application code when needed.
 
 #### `stopScan()`
 
 Stops scanning for BLE devices.
 
-#### `connect(deviceId)`
+#### `connect(deviceId, options?)`
 
 Connects to a BLE device.
 
 **Parameters:**
 
 - `deviceId` (string): The unique identifier of the device
+- `options?` (object):
+  - `timeoutMs?` (number): Cancel the attempt and reject after this many milliseconds. Defaults to 15000, or no timeout when `autoConnect` is true. `0` waits indefinitely.
+  - `autoConnect?` (boolean): Android passes `autoConnect = true` to `connectGatt`, a background connection that completes whenever the device is next in range (slower, but it does not give up). iOS 17+ sets `CBConnectPeripheralOptionEnableAutoReconnect`, so the system reconnects after a link loss: `deviceDisconnected` then carries `isReconnecting: true`, `connectionStateChanged` reports `connecting`, and `deviceConnected` fires again when the link is back. Ignored on older iOS.
 
-**Returns:** Promise<void>. The promise rejects if the native connection does not complete within 15 seconds.
+**Returns:** Promise<void>. Rejects when the timeout elapses first.
+
+On Android 17+ (API 37) the connection uses `connectGatt(BluetoothGattConnectionSettings, Executor, callback)` (the `Context` overloads are deprecated there) with the LE transport and the same `autoConnect` choice; older releases keep `connectGatt(context, autoConnect, callback, TRANSPORT_LE)`.
 
 #### `disconnect(deviceId)`
 
@@ -703,6 +818,11 @@ Writes a value to a characteristic on a connected device.
 
 **Returns:** Promise<void>. With-response writes reject if the native write callback does not arrive within 15 seconds.
 
+Write-without-response is flow controlled, so a burst of writes is not silently dropped:
+
+- **iOS** queues each value and hands it to CoreBluetooth only while `canSendWriteWithoutResponse` is true, draining the rest from `peripheralIsReady(toSendWriteWithoutResponse:)`. The promise resolves once CoreBluetooth has accepted the value. Values longer than `getMaximumWriteLength(deviceId, 'withoutResponse')` are rejected; the queue holds at most 1024 pending values per device.
+- **Android** sends one write at a time through the per-device GATT queue and waits for the stack's `onCharacteristicWrite` before the next. If the stack still reports busy (`ERROR_GATT_WRITE_REQUEST_BUSY` on Android 13+, or `false` from `writeCharacteristic` before that), the write is retried with a short backoff (up to 20 attempts) before the promise rejects.
+
 #### `writeDescriptor(deviceId, serviceUUID, characteristicUUID, descriptorUUID, value)`
 
 Writes a descriptor value to a connected device.
@@ -737,24 +857,33 @@ Use `addEventListener(eventName, callback)` for BLE status and data events.
 | --- | --- |
 | `deviceFound` | Discovered BLE device payload: `{ id, name?, localName?, rssi?, serviceUUIDs?, serviceData?, manufacturerData?, txPowerLevel?, isConnectable?, advertisingData? }`. |
 | `onDeviceFound`, `scanResult` | Legacy aliases for `deviceFound`. |
-| `scanFailed` | `{ errorCode, message }` on Android scan callback failure. |
+| `scanFailed` | `{ errorCode, message, retryAfterMs? }` on Android scan callback failure, or when a start would exceed Android's 5-starts-per-30-seconds limit (`errorCode: 6`). |
+| `deviceLost` | Android `callbackType: 'matchLost'`: `{ id, rssi? }` when a matching device stops advertising. |
 | `advertisingStarted` | Empty payload when advertising starts. |
 | `advertisingStartFailed` | Android: `{ errorCode, message }`; iOS: `{ error }`. |
-| `classicDeviceFound` | Android Classic discovery result: `{ id, name, bondState }`. |
+| `classicDeviceFound` | Android Classic discovery result: `{ id, name, bondState, rssi?, bluetoothClass?, serviceUUIDs? }`. |
 | `classicScanFailed`, `classicScanFinished` | Android Classic discovery status events. |
 | `classicConnected`, `classicDisconnected` | Android Classic RFCOMM connection status: `{ deviceId }`. |
 | `classicConnectionReceived` | Android Classic RFCOMM inbound connection: `{ deviceId }`. |
 | `classicServerStarted`, `classicServerStopped` | Android Classic RFCOMM listener status. |
 | `classicDataReceived` | Android Classic RFCOMM data: `{ deviceId, value }`. |
+| `adapterStateChanged` | `{ state, authorization }` when the Bluetooth adapter changes state. `state` is `poweredOn`, `poweredOff`, `resetting`, `unauthorized`, `unsupported`, or `unknown`; Android also reports `turningOn`/`turningOff`. Android's `authorization` is `allowedAlways` when `BLUETOOTH_CONNECT` is granted, otherwise `unknown`. |
 | `deviceConnected` | `{ deviceId }` |
 | `deviceDisconnected` | `{ deviceId }` |
 | `servicesDiscovered` | `{ deviceId, services }` |
+| `servicesChanged` | `{ deviceId, invalidatedServices? }` when the remote GATT database changes (iOS `didModifyServices`, Android 12+ `onServiceChanged`). Cached characteristics are dropped and the next `discoverServices()` re-reads the database; iOS lists the invalidated service UUIDs and fails queued write-without-response values that targeted them. |
 | `characteristicValueChanged` | `{ deviceId, serviceUUID, characteristicUUID, value }` |
 | `l2capChannelPublished`, `l2capChannelUnpublished` | Local LE L2CAP channel lifecycle status. |
 | `l2capChannelOpened`, `l2capChannelClosed` | LE L2CAP stream lifecycle status. |
 | `l2capChannelPublishFailed`, `l2capChannelOpenFailed` | LE L2CAP failure status. |
 | `l2capDataReceived` | LE L2CAP stream data: `{ channelId, psm, deviceId, value }`. |
 | `rssiUpdated` | `{ deviceId, rssi }` |
+| `bondStateChanged` | Android: `{ deviceId, bondState, previousBondState?, bondLossReason? }` for every device. `bondLossReason` (`unknown`, `bredrAuthFailure`, `bredrIncomingPairing`, `leEncryptFailure`, `leIncomingPairing`) is reported on Android 16 QPR2+ when a bond was lost. |
+| `bondKeyMissing` | Android 16+: `{ deviceId }` when the peer lost its bond keys (`ACTION_KEY_MISSING`). Android 16 keeps the bond and disconnects; Android 17 first re-pairs on its own and only reports this if that fails. |
+| `encryptionChanged` | Android 16+: `{ deviceId, status, enabled, algorithm?, keySize?, transport? }` from `ACTION_ENCRYPTION_CHANGE`. |
+| `subrateChanged` | Android 16 QPR2+: `{ deviceId, mode, status }` from `onSubrateChange`; `mode` is `off`, `low`, `balanced`, `high`, `systemUpdate`, `notUpdated`, or `unknown`. |
+| `channelSoundingResults` | iOS 27+: `{ deviceId, distance?, error?, errorCode? }`, `distance` in metres. |
+| `channelSoundingCompleted` | iOS 27+: `{ deviceId, error?, errorCode? }` when a Channel Sounding session ends. |
 | `peripheralReadRequest` | `{ centralId, serviceUUID, characteristicUUID, value }` |
 | `peripheralWriteRequest` | `{ centralId, serviceUUID, characteristicUUID, value }` |
 | `peripheralSubscribed` | `{ centralId, serviceUUID, characteristicUUID }` |
@@ -765,6 +894,7 @@ Use `addEventListener(eventName, callback)` for BLE status and data events.
 | `backgroundSessionStartFailed` | `{ platform, error }` |
 | `multipeerStarted`, `multipeerStopped`, `multipeerStartFailed` | Apple Multipeer lifecycle status. |
 | `multipeerPeerFound`, `multipeerPeerLost`, `multipeerPeerStateChanged` | Apple Multipeer peer discovery and connection state. |
+| `multipeerInvitationReceived` | Pending Apple Multipeer invitation: `{ invitationId, peerId, displayName, expiresAt }`. Explicitly accept or reject it before expiry. |
 | `multipeerMessageReceived` | Apple Multipeer data: `{ peerId, displayName, value }`. |
 
 #### `getConnectedDevices()`
@@ -785,9 +915,25 @@ Reads RSSI (signal strength) for a connected device.
 
 #### `requestMTU(deviceId, mtu)`
 
-Requests an ATT MTU on Android. iOS rejects with an unsupported error because CoreBluetooth negotiates MTU internally.
+Requests an ATT MTU on Android and resolves with the negotiated value. CoreBluetooth negotiates the MTU itself, so iOS ignores `mtu` and resolves with the MTU in effect (`maximumWriteValueLength(.withoutResponse) + 3`).
 
 **Returns:** Promise<number>
+
+#### `getMaximumWriteLength(deviceId, type)`
+
+Returns the largest value, in bytes, that one characteristic write can carry on this connection. Use it to chunk write-without-response payloads.
+
+- `type`: `'withResponse' | 'withoutResponse'`
+- iOS: CoreBluetooth's `maximumWriteValueLength(for:)`.
+- Android: `'withoutResponse'` is the last negotiated MTU minus 3 (23 − 3 = 20 until an MTU exchange has been reported, so call `requestMTU()` first); `'withResponse'` is 512, the maximum attribute length that a long write can carry.
+
+**Returns:** Promise<number>
+
+#### `requestConnectionPriority(deviceId, priority)`
+
+Requests a connection interval profile: `'high'` (short interval, more throughput and lower latency), `'balanced'` (the default), or `'lowPower'`. Android calls `BluetoothGatt.requestConnectionPriority()` and resolves with whether the request was accepted; the controller still negotiates the final parameters. iOS resolves `false` and changes nothing, because CoreBluetooth manages connection parameters itself.
+
+**Returns:** Promise<boolean>
 
 #### `setPreferredPhy(deviceId, txPhy, rxPhy, phyOption?)`
 
@@ -801,6 +947,15 @@ Reads the current BLE PHY on Android 8+ when hardware supports it. iOS rejects w
 
 **Returns:** Promise<PhyStatus>
 
+#### `refreshGattCache(deviceId)`
+
+Clears the OS GATT attribute cache for a connected device so the next `discoverServices()` re-reads the remote database. Useful after a peripheral firmware update when the stack keeps serving stale handles.
+
+- Android: calls the hidden `BluetoothGatt.refresh()` through the GATT queue and resolves with its result (`false` when the platform refuses it).
+- iOS: resolves `false`. CoreBluetooth has no public cache API and applies Service Changed indications itself (listen for `servicesChanged`).
+
+**Returns:** Promise<boolean>
+
 #### `getBondState(deviceId)`
 
 Returns Android bond state. iOS resolves to `unsupported`.
@@ -813,15 +968,51 @@ Starts Android pairing/bonding. iOS rejects with an unsupported error.
 
 **Returns:** Promise<BondState>
 
+#### `getBondedDevices()`
+
+Lists devices bonded (paired) with the phone: `{ id, name?, type }[]`, where `type` is `'classic' | 'le' | 'dual' | 'unknown'` and `id` is the MAC address usable with `connect()`/`connectClassic()`. Android only; needs the `connect` permission on Android 12+. iOS keeps pairings private and resolves `[]`.
+
+**Returns:** Promise<BondedDevice[]>
+
 #### `removeBond(deviceId)`
 
 Removes an Android bond when the OS exposes that operation. iOS rejects with an unsupported error.
 
 **Returns:** Promise<BondState>
 
+#### `requestSubrateMode(deviceId, mode)`
+
+Asks for an LE connection subrate mode: `'off' | 'low' | 'balanced' | 'high'` (`BluetoothGatt.SUBRATE_MODE_*`). Android 16 QPR2+ (API 36.1) only. Resolves once the stack accepted the request and rejects with the reason otherwise (for example the device is not bonded, or the controller has no subrating). The resulting mode arrives as a `subrateChanged` event, which also fires when the stack or peer changes the mode on its own. iOS and older Android reject as unsupported; check `getCapabilities().supportsConnectionSubrating` first.
+
+**Returns:** Promise<void>
+
+#### `startChannelSoundingSession(deviceId, options?)`, `stopChannelSoundingSession(deviceId)`
+
+Bluetooth Channel Sounding (distance ranging) with a connected peripheral, iOS 27+:
+
+```ts
+const { supportsChannelSounding } = await getCapabilities()
+if (supportsChannelSounding) {
+  const stop = addEventListener('channelSoundingResults', ({ distance, error }) => {
+    if (distance != null) console.log(`${distance.toFixed(2)} m`)
+  })
+  await startChannelSoundingSession(deviceId) // role: 'initiator' (the only role iOS offers)
+  // ...
+  await stopChannelSoundingSession(deviceId) // channelSoundingCompleted follows
+}
+```
+
+- Needs an N1-chip iPhone and a Bluetooth 6 Channel Sounding accessory, and works in the foreground only.
+- `startChannelSoundingSession` rejects when the device/region does not support Channel Sounding, when the peripheral is not connected, on iOS < 27, on Android (its `android.ranging` API is not wrapped), and in apps built with Xcode older than 27.
+- Each procedure emits `channelSoundingResults` (`distance` in metres, or `error`); the end of the session emits `channelSoundingCompleted`.
+
+**Returns:** Promise<void>
+
 #### `startExtendedAdvertising(options)`
 
 Starts an Android BLE extended advertising set on Android 8+ hardware that supports LE extended advertising. iOS rejects with an unsupported error.
+
+`txPowerLevel` (dBm) is clamped to what the OS accepts: -127...1 dBm, or -127...20 dBm on Android 17+ (API 37). `maxTxPower: true` asks for the strongest level the controller offers (`TX_POWER_MAX_AVAILABLE` on Android 17+, `TX_POWER_MAX` before).
 
 **Returns:** Promise<string>
 
@@ -831,11 +1022,24 @@ Stops an Android BLE extended advertising set.
 
 #### `publishL2CAPChannel()`, `openL2CAPChannel()`, `sendL2CAPData()`
 
-Opens BLE L2CAP channel streams. iOS uses CoreBluetooth LE Credit Based Channels. Android requires Android 10+.
+Opens BLE L2CAP channel streams. iOS uses CoreBluetooth LE Credit Based Channels. Android requires Android 10+. Publishing and outbound opening require encryption by default; pass `false` explicitly only for a deliberately insecure channel. Native servers admit at most 16 inbound channels globally and 4 per peer, closing excess channels immediately.
 
 #### `startClassicScan()`, `connectClassic()`, `startClassicServer()`, `writeClassic()`
 
 Android Classic Bluetooth RFCOMM discovery, client connection, server listener, write, disconnect, and receive events. iOS rejects with explicit unsupported errors because public iOS APIs do not expose arbitrary Classic RFCOMM.
+
+`classicDeviceFound` includes Android classification metadata when the remote device reports it:
+
+```typescript
+addEventListener('classicDeviceFound', (device) => {
+  console.log(device.bluetoothClass?.deviceClass)
+  console.log(device.bluetoothClass?.majorDeviceClass)
+  console.log(device.bluetoothClass?.serviceClasses)
+  console.log(device.serviceUUIDs)
+})
+```
+
+`deviceClass` and `majorDeviceClass` are raw Android Bluetooth class values. `serviceClasses` contains matching `BluetoothClass.Service` bit flags. `serviceUUIDs` contains Android's cached SDP UUIDs and may be absent for unpaired or newly discovered devices. These values are classification hints; devices do not always advertise accurate class or service information.
 
 ### Types
 
@@ -1159,6 +1363,12 @@ const DeviceScanner = () => {
 3. **Services Not Visible**: Verify that your service UUIDs are properly formatted
 4. **Scanning Not Working**: On Android 6.0+, ensure location permissions are granted
 5. **Connection Fails**: Verify the device is in range and advertising
+
+### Xcode 27
+
+- Apps built with Xcode 27 must adopt the UIScene lifecycle or they crash at launch on iOS 27 (Apple TN3187). Bare React Native apps need a `SceneDelegate`; see `example/ios/MunimBluetoothExample/AppDelegate.swift`. Expo SDK 57 apps set `expo-build-properties` → `ios.enableSceneSupport: true`.
+- `react-native-nitro-modules` 0.36/0.37 built with Xcode 27 crashes at launch on iOS 17 and older (dyld: missing `std::exception_ptr::__from_native_exception_pointer`, margelo/nitro#1652). Until a fixed Nitro release ships, patch `NitroModules/ios/utils/RuntimeError.hpp` so `makeException` throws and catches the error and returns `std::current_exception()` instead of calling `std::make_exception_ptr` (upstream fix PR margelo/nitro#1666), for example with `patch-package`.
+- iOS 27 APIs (Channel Sounding) only compile in with Xcode 27 / Swift 6.4; Xcode 26 builds still work and report them as unsupported.
 
 ### Expo-Specific Issues
 

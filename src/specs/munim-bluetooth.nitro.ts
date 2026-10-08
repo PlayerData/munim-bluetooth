@@ -6,6 +6,13 @@ export interface ServiceDataEntry {
   data: string
 }
 
+export interface ManufacturerDataEntry {
+  /** Bluetooth SIG company identifier (0...65535). */
+  companyId: number
+  /** Manufacturer payload only; the company identifier is carried separately. */
+  data: string
+}
+
 // BLE advertising data types. Android can advertise all supported fields when
 // payload size and hardware allow it; iOS advertising is limited by
 // CoreBluetooth to local name and service UUIDs.
@@ -44,7 +51,12 @@ export interface AdvertisingDataTypes {
   serviceSolicitationUUIDs32?: string[]
 
   // 0xFF - Manufacturer Specific Data
+  /** Legacy payload. Uses manufacturerCompanyId, or 0 when omitted. */
   manufacturerData?: string
+  /** Company identifier paired with legacy manufacturerData. */
+  manufacturerCompanyId?: number
+  /** Preferred representation; supports multiple company data sections. */
+  manufacturerDataEntries?: ManufacturerDataEntry[]
 }
 
 // BLE Device information
@@ -57,6 +69,8 @@ export interface BLEDevice {
   serviceUUIDs?: string[]
   serviceData?: ServiceDataEntry[]
   manufacturerData?: string
+  manufacturerCompanyId?: number
+  manufacturerDataEntries?: ManufacturerDataEntry[]
   txPowerLevel?: number
   isConnectable?: boolean
 }
@@ -64,11 +78,65 @@ export interface BLEDevice {
 // Scan mode type
 export type ScanMode = 'lowPower' | 'balanced' | 'lowLatency'
 
+/** Android ScanSettings callback type. */
+export type ScanCallbackType = 'allMatches' | 'firstMatch' | 'matchLost'
+
+/** Android ScanSettings match mode. */
+export type ScanMatchMode = 'aggressive' | 'sticky'
+
+/** Android ScanSettings PHY (only used when `legacy` is false). */
+export type ScanPhy = 'le1m' | 'leCoded' | 'allSupported'
+
 // Scan options
 export interface ScanOptions {
   serviceUUIDs?: string[]
   allowDuplicates?: boolean
   scanMode?: ScanMode
+  /**
+   * Drop scan results weaker than this RSSI (dBm). Android 16 QPR2+ (API
+   * 36.1) also passes it to the controller via
+   * ScanSettings.Builder.setRssiThreshold so weak advertisements are dropped
+   * before they reach the app; every platform still filters in-process.
+   */
+  rssiThreshold?: number
+  /** Only report devices whose advertised/local name starts with this prefix. */
+  namePrefix?: string
+  /**
+   * Only report devices whose advertised/local name equals this exactly.
+   * Android: ScanFilter.setDeviceName. iOS: filtered in-process.
+   */
+  deviceName?: string
+  /** Android only: only report this MAC address (ScanFilter.setDeviceAddress). */
+  deviceAddress?: string
+  /**
+   * Only report devices advertising manufacturer data for this Bluetooth SIG
+   * company identifier. Android: ScanFilter.setManufacturerData. iOS:
+   * filtered in-process.
+   */
+  manufacturerId?: number
+  /**
+   * Hex prefix the manufacturer payload (after the company identifier) must
+   * match. Requires manufacturerId.
+   */
+  manufacturerData?: string
+  /**
+   * Hex bit mask for manufacturerData, same length: 1 bits must match,
+   * 0 bits are ignored.
+   */
+  manufacturerDataMask?: string
+  /** Android: batch results and deliver them every N ms (0 = immediately). */
+  reportDelayMs?: number
+  /** Android: ScanSettings callback type. Defaults to 'allMatches'. */
+  callbackType?: ScanCallbackType
+  /** Android: ScanSettings match mode. Defaults to 'aggressive'. */
+  matchMode?: ScanMatchMode
+  /**
+   * Android 8+: report only legacy advertisements (default true). Set false
+   * to also receive extended advertisements.
+   */
+  legacy?: boolean
+  /** Android 8+: PHY to scan on when legacy is false. */
+  phy?: ScanPhy
 }
 
 export interface GATTDescriptor {
@@ -77,10 +145,27 @@ export interface GATTDescriptor {
   permissions?: string[]
 }
 
+export type GATTCharacteristicPermission =
+  | 'read'
+  | 'write'
+  | 'readEncrypted'
+  | 'writeEncrypted'
+  | 'readEncryptedMitm'
+  | 'writeEncryptedMitm'
+
 // GATT Characteristic
 export interface GATTCharacteristic {
   uuid: string
   properties: string[]
+  /**
+   * Access requirements for read/write properties. When omitted, readable and
+   * writable properties retain their existing plaintext behavior.
+   *
+   * Android supports encrypted and authenticated-MITM permissions. CoreBluetooth
+   * supports encrypted permissions but has no public authenticated-MITM option,
+   * so iOS rejects authenticated-MITM permissions instead of weakening them.
+   */
+  permissions?: GATTCharacteristicPermission[]
   value?: string
   descriptors?: GATTDescriptor[]
 }
@@ -90,6 +175,34 @@ export interface GATTService {
   uuid: string
   characteristics: GATTCharacteristic[]
   includedServices?: string[]
+}
+
+export type PeripheralRequestMode = 'automatic' | 'manual'
+
+export interface PeripheralRequestOptions {
+  /**
+   * `automatic` preserves the legacy static-value behavior. `manual` waits for
+   * an explicit JS response and falls back to an ATT error on timeout.
+   */
+  mode?: PeripheralRequestMode
+  /** Response timeout in milliseconds. Clamped natively to 100...30000. */
+  timeoutMs?: number
+}
+
+export type PeripheralRequestStatus =
+  | 'success'
+  | 'invalidOffset'
+  | 'readNotPermitted'
+  | 'writeNotPermitted'
+  | 'requestNotSupported'
+  | 'unlikelyError'
+
+export interface GATTQueueDiagnostic {
+  deviceId: string
+  activeOperation?: string
+  activeTarget?: string
+  queuedOperations: number
+  activeDurationMs?: number
 }
 
 // Characteristic value
@@ -106,8 +219,27 @@ export interface DescriptorValue {
   descriptorUUID: string
 }
 
+export interface ConnectOptions {
+  /**
+   * Reject (and cancel the attempt) if the link is not up within this many
+   * milliseconds. Defaults to 15000, or no timeout when autoConnect is true.
+   * Pass 0 to wait indefinitely.
+   */
+  timeoutMs?: number
+  /**
+   * Android: connectGatt(autoConnect = true), a background connection that
+   * completes whenever the device comes into range. iOS 17+: enables
+   * CBConnectPeripheralOptionEnableAutoReconnect so the system reconnects
+   * after a link loss. Defaults to false.
+   */
+  autoConnect?: boolean
+}
+
 // Write type for characteristic writes
 export type WriteType = 'write' | 'writeWithoutResponse'
+
+/** Which write procedure getMaximumWriteLength() should report for. */
+export type WriteLengthType = 'withResponse' | 'withoutResponse'
 
 export type BluetoothPhy = 'le1m' | 'le2m' | 'leCoded'
 
@@ -118,7 +250,26 @@ export interface PhyStatus {
   rxPhy: BluetoothPhy
 }
 
+export type ConnectionPriority = 'balanced' | 'high' | 'lowPower'
+
 export type BondState = 'none' | 'bonding' | 'bonded' | 'unsupported'
+
+/**
+ * LE connection subrating modes (Android 16 QPR2+ / API 36.1,
+ * BluetoothGatt.SUBRATE_MODE_*). `off` disables subrating; `low`, `balanced`
+ * and `high` trade latency for power.
+ */
+export type SubrateMode = 'off' | 'low' | 'balanced' | 'high'
+
+/** Android BluetoothDevice.getType(). */
+export type BluetoothDeviceType = 'classic' | 'le' | 'dual' | 'unknown'
+
+export interface BondedDevice {
+  /** MAC address; usable as a deviceId for connect()/connectClassic(). */
+  id: string
+  name?: string
+  type: BluetoothDeviceType
+}
 
 export interface BluetoothCapabilities {
   platform: string
@@ -134,6 +285,23 @@ export interface BluetoothCapabilities {
   supportsClassicBluetooth: boolean
   supportsBackgroundBle: boolean
   supportsMultipeerConnectivity: boolean
+  /**
+   * iOS 27+: CBCentralManager.supports(.channelSounding) — the hardware and
+   * region support Bluetooth Channel Sounding (N1-chip iPhone). Always false
+   * on Android and older iOS.
+   */
+  supportsChannelSounding: boolean
+  /**
+   * Android 17+ (API 37): BluetoothAdapter.isLeHighDataThroughputPhySupported()
+   * reports FEATURE_SUPPORTED. Always false on iOS and older Android.
+   */
+  supportsLeHighDataThroughputPhy: boolean
+  /**
+   * Android 16 QPR2+ (API 36.1): requestSubrateMode() is available. Whether
+   * the controller and the peer accept a subrate request is only known per
+   * connection. Always false on iOS.
+   */
+  supportsConnectionSubrating: boolean
 }
 
 // Advertising options for startAdvertising
@@ -141,6 +309,8 @@ export interface AdvertisingOptions {
   serviceUUIDs: string[]
   localName?: string
   manufacturerData?: string
+  manufacturerCompanyId?: number
+  manufacturerDataEntries?: ManufacturerDataEntry[]
   advertisingData?: AdvertisingDataTypes
 }
 
@@ -148,6 +318,8 @@ export interface ExtendedAdvertisingOptions {
   serviceUUIDs?: string[]
   localName?: string
   manufacturerData?: string
+  manufacturerCompanyId?: number
+  manufacturerDataEntries?: ManufacturerDataEntry[]
   advertisingData?: AdvertisingDataTypes
   connectable?: boolean
   scannable?: boolean
@@ -155,7 +327,17 @@ export interface ExtendedAdvertisingOptions {
   anonymous?: boolean
   includeTxPower?: boolean
   interval?: number
+  /**
+   * Requested TX power in dBm. Android accepts -127...1 dBm, or -127...20 dBm
+   * on Android 17+ (API 37); values above the limit are clamped.
+   */
   txPowerLevel?: number
+  /**
+   * Advertise at the strongest power the controller offers. Android 17+
+   * (API 37) uses TX_POWER_MAX_AVAILABLE (up to 20 dBm); older releases use
+   * TX_POWER_MAX (1 dBm). Overrides txPowerLevel when true.
+   */
+  maxTxPower?: boolean
   primaryPhy?: BluetoothPhy
   secondaryPhy?: BluetoothPhy
 }
@@ -188,7 +370,14 @@ export interface MultipeerSessionOptions {
   serviceType: string
   displayName?: string
   discoveryInfo?: MultipeerDiscoveryInfoEntry[]
+  /**
+   * Defaults to false. Prefer inviting a selected peer explicitly.
+   */
   autoInvite?: boolean
+  /**
+   * Defaults to false. Setting this to true explicitly accepts all incoming
+   * invitations; otherwise use acceptMultipeerInvitation/rejectMultipeerInvitation.
+   */
   autoAcceptInvitations?: boolean
   inviteTimeout?: number
   encryptionPreference?: MultipeerEncryptionPreference
@@ -245,7 +434,7 @@ export interface MunimBluetooth
    * @param services - An array of service objects, each with a uuid and an array of characteristics.
    *                  This must be serializable to a plain JS array (no Maps/Sets/functions).
    */
-  setServices(services: GATTService[]): void
+  setServices(services: GATTService[], requestOptions: PeripheralRequestOptions): void
 
   /**
    * Update a local peripheral characteristic value and optionally notify/indicate
@@ -263,6 +452,30 @@ export interface MunimBluetooth
     notify?: boolean
   ): Promise<void>
 
+  /**
+   * Complete a pending manual peripheral read request. `useStoredValue`
+   * answers with the characteristic's stored value and ignores `value`.
+   */
+  respondToPeripheralReadRequest(
+    requestId: string,
+    value: string,
+    useStoredValue: boolean,
+    status: PeripheralRequestStatus
+  ): Promise<void>
+
+  /** Accept or reject a pending manual peripheral write request. */
+  respondToPeripheralWriteRequest(
+    requestId: string,
+    accept: boolean,
+    status: PeripheralRequestStatus
+  ): Promise<void>
+
+  /** Commit or cancel an Android prepared-write transaction. */
+  respondToPeripheralExecuteWriteRequest(
+    requestId: string,
+    accept: boolean
+  ): Promise<void>
+
   // ========== Central/Manager Features ==========
 
   /**
@@ -273,11 +486,20 @@ export interface MunimBluetooth
   isBluetoothEnabled(): Promise<boolean>
 
   /**
-   * Request Bluetooth permissions (Android) or check authorization status (iOS).
+   * Ask the user to turn Bluetooth on. Android shows the system
+   * ACTION_REQUEST_ENABLE dialog (needs a foreground Activity and, on
+   * Android 12+, BLUETOOTH_CONNECT) and resolves true when the user accepts.
+   * iOS apps cannot enable Bluetooth; iOS resolves with whether it is on.
+   */
+  requestEnable(): Promise<boolean>
+
+  /**
+   * Request selected Bluetooth permissions (Android) or check authorization status (iOS).
    *
+   * @param permissions - Android capabilities to request.
    * @returns Promise resolving to true if permissions are granted, false otherwise.
    */
-  requestBluetoothPermission(): Promise<boolean>
+  requestBluetoothPermission(permissions?: string[]): Promise<boolean>
 
   /**
    * Return the Bluetooth features this platform can support through public APIs.
@@ -289,7 +511,7 @@ export interface MunimBluetooth
    *
    * @param options - Optional scan configuration including service UUIDs to filter by.
    */
-  startScan(options?: ScanOptions): void
+  startScan(options: ScanOptions): void
 
   /**
    * Stop scanning for BLE devices.
@@ -300,9 +522,10 @@ export interface MunimBluetooth
    * Connect to a BLE device.
    *
    * @param deviceId - The unique identifier of the device to connect to.
+   * @param options - Optional timeout and auto-connect behaviour.
    * @returns Promise resolving when connection is established or rejected.
    */
-  connect(deviceId: string): Promise<void>
+  connect(deviceId: string, options: ConnectOptions): Promise<void>
 
   /**
    * Disconnect from a BLE device.
@@ -358,7 +581,7 @@ export interface MunimBluetooth
     serviceUUID: string,
     characteristicUUID: string,
     value: string,
-    writeType?: WriteType
+    writeType: WriteType
   ): Promise<void>
 
   /**
@@ -383,7 +606,7 @@ export interface MunimBluetooth
     deviceId: string,
     serviceUUID: string,
     characteristicUUID: string
-  ): void
+  ): Promise<void>
 
   /**
    * Unsubscribe from notifications/indications from a characteristic.
@@ -396,7 +619,18 @@ export interface MunimBluetooth
     deviceId: string,
     serviceUUID: string,
     characteristicUUID: string
-  ): void
+  ): Promise<void>
+
+  /**
+   * Clear the OS GATT attribute cache for a connected device so the next
+   * discoverServices() re-reads the remote database. Android uses the hidden
+   * BluetoothGatt.refresh() and resolves with its result; iOS has no such API
+   * (CoreBluetooth tracks Service Changed itself) and resolves false.
+   */
+  refreshGattCache(deviceId: string): Promise<boolean>
+
+  /** Snapshot serialized per-device GATT queues for diagnostics. */
+  getGattQueueDiagnostics(): Promise<GATTQueueDiagnostic[]>
 
   /**
    * Get list of currently connected devices.
@@ -414,9 +648,33 @@ export interface MunimBluetooth
   readRSSI(deviceId: string): Promise<number>
 
   /**
-   * Request a BLE ATT MTU. Android supports this directly; iOS negotiates MTU internally.
+   * Request a BLE ATT MTU. Android negotiates the requested value. iOS
+   * negotiates the MTU itself, so it ignores the requested value and resolves
+   * with the MTU in effect (maximum write-without-response length + 3).
    */
   requestMTU(deviceId: string, mtu: number): Promise<number>
+
+  /**
+   * Largest value, in bytes, that a single characteristic write of the given
+   * type can carry on this connection. Write-without-response values larger
+   * than this are rejected; write-with-response values up to 512 bytes use a
+   * long (prepared) write.
+   */
+  getMaximumWriteLength(
+    deviceId: string,
+    type: WriteLengthType
+  ): Promise<number>
+
+  /**
+   * Ask for a connection interval profile. Android forwards this to
+   * BluetoothGatt.requestConnectionPriority() and resolves with whether the
+   * request was accepted. iOS picks connection parameters itself; it resolves
+   * false without changing anything.
+   */
+  requestConnectionPriority(
+    deviceId: string,
+    priority: ConnectionPriority
+  ): Promise<boolean>
 
   /**
    * Set preferred BLE PHY where supported.
@@ -425,7 +683,7 @@ export interface MunimBluetooth
     deviceId: string,
     txPhy: BluetoothPhy,
     rxPhy: BluetoothPhy,
-    phyOption?: BluetoothPhyOption
+    phyOption: BluetoothPhyOption
   ): Promise<void>
 
   /**
@@ -444,6 +702,13 @@ export interface MunimBluetooth
   createBond(deviceId: string): Promise<BondState>
 
   /**
+   * List devices bonded (paired) with this phone. Android only; needs
+   * BLUETOOTH_CONNECT on Android 12+. iOS exposes no bond list and resolves
+   * an empty array.
+   */
+  getBondedDevices(): Promise<BondedDevice[]>
+
+  /**
    * Remove an Android bond. Unsupported on iOS public APIs.
    */
   removeBond(deviceId: string): Promise<BondState>
@@ -459,7 +724,8 @@ export interface MunimBluetooth
   stopExtendedAdvertising(advertisingId: string): void
 
   /**
-   * Publish a local L2CAP channel where supported.
+   * Publish a local L2CAP channel where supported. Encryption is required by
+   * default; pass false explicitly to publish an insecure channel.
    */
   publishL2CAPChannel(encryptionRequired?: boolean): Promise<L2CAPChannel>
 
@@ -471,7 +737,7 @@ export interface MunimBluetooth
   /**
    * Open an outbound L2CAP channel to a BLE device.
    */
-  openL2CAPChannel(deviceId: string, psm: number): Promise<L2CAPChannel>
+  openL2CAPChannel(deviceId: string, psm: number, encryptionRequired?: boolean): Promise<L2CAPChannel>
 
   /**
    * Close an L2CAP channel.
@@ -554,6 +820,16 @@ export interface MunimBluetooth
   inviteMultipeerPeer(peerId: string): void
 
   /**
+   * Accept a pending incoming Multipeer invitation by its opaque runtime id.
+   */
+  acceptMultipeerInvitation(invitationId: string): void
+
+  /**
+   * Reject a pending incoming Multipeer invitation by its opaque runtime id.
+   */
+  rejectMultipeerInvitation(invitationId: string): void
+
+  /**
    * Return discovered/connected Multipeer peers for this runtime session.
    */
   getMultipeerPeers(): Promise<MultipeerPeer[]>
@@ -567,6 +843,32 @@ export interface MunimBluetooth
     peerIds?: string[],
     reliable?: boolean
   ): Promise<void>
+
+  /**
+   * Ask for an LE connection subrate mode. Android 16 QPR2+ (API 36.1) only:
+   * resolves once the stack accepted the request, rejects with the reason
+   * otherwise (for example when the device is not bonded or the controller
+   * lacks subrating). The negotiated mode arrives as a `subrateChanged`
+   * event. iOS and older Android reject as unsupported.
+   */
+  requestSubrateMode(deviceId: string, mode: SubrateMode): Promise<void>
+
+  /**
+   * Start a Bluetooth Channel Sounding (distance ranging) session with a
+   * connected peripheral. iOS 27+ on hardware that reports
+   * `supportsChannelSounding` (N1-chip iPhone with a Bluetooth 6 Channel
+   * Sounding accessory); foreground only. Results arrive as
+   * `channelSoundingResults` events, the end of the session as
+   * `channelSoundingCompleted`. Rejects as unsupported elsewhere.
+   *
+   * The session always uses the initiator role, the only role iOS 27 offers.
+   */
+  startChannelSoundingSession(deviceId: string): Promise<void>
+
+  /**
+   * Cancel the active Channel Sounding session with a peripheral. iOS 27+.
+   */
+  stopChannelSoundingSession(deviceId: string): Promise<void>
 
   // ========== Event Management ==========
 

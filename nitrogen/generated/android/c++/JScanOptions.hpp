@@ -10,8 +10,14 @@
 #include <fbjni/fbjni.h>
 #include "ScanOptions.hpp"
 
+#include "JScanCallbackType.hpp"
+#include "JScanMatchMode.hpp"
 #include "JScanMode.hpp"
+#include "JScanPhy.hpp"
+#include "ScanCallbackType.hpp"
+#include "ScanMatchMode.hpp"
 #include "ScanMode.hpp"
+#include "ScanPhy.hpp"
 #include <optional>
 #include <string>
 #include <vector>
@@ -21,7 +27,7 @@ namespace margelo::nitro::munimbluetooth {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "ScanOptions" and the the Kotlin data class "ScanOptions".
+   * The C++ JNI bridge between the C++ struct "ScanOptions" and the Kotlin data class "ScanOptions".
    */
   struct JScanOptions final: public jni::JavaClass<JScanOptions> {
   public:
@@ -41,6 +47,30 @@ namespace margelo::nitro::munimbluetooth {
       jni::local_ref<jni::JBoolean> allowDuplicates = this->getFieldValue(fieldAllowDuplicates);
       static const auto fieldScanMode = clazz->getField<JScanMode>("scanMode");
       jni::local_ref<JScanMode> scanMode = this->getFieldValue(fieldScanMode);
+      static const auto fieldRssiThreshold = clazz->getField<jni::JDouble>("rssiThreshold");
+      jni::local_ref<jni::JDouble> rssiThreshold = this->getFieldValue(fieldRssiThreshold);
+      static const auto fieldNamePrefix = clazz->getField<jni::JString>("namePrefix");
+      jni::local_ref<jni::JString> namePrefix = this->getFieldValue(fieldNamePrefix);
+      static const auto fieldDeviceName = clazz->getField<jni::JString>("deviceName");
+      jni::local_ref<jni::JString> deviceName = this->getFieldValue(fieldDeviceName);
+      static const auto fieldDeviceAddress = clazz->getField<jni::JString>("deviceAddress");
+      jni::local_ref<jni::JString> deviceAddress = this->getFieldValue(fieldDeviceAddress);
+      static const auto fieldManufacturerId = clazz->getField<jni::JDouble>("manufacturerId");
+      jni::local_ref<jni::JDouble> manufacturerId = this->getFieldValue(fieldManufacturerId);
+      static const auto fieldManufacturerData = clazz->getField<jni::JString>("manufacturerData");
+      jni::local_ref<jni::JString> manufacturerData = this->getFieldValue(fieldManufacturerData);
+      static const auto fieldManufacturerDataMask = clazz->getField<jni::JString>("manufacturerDataMask");
+      jni::local_ref<jni::JString> manufacturerDataMask = this->getFieldValue(fieldManufacturerDataMask);
+      static const auto fieldReportDelayMs = clazz->getField<jni::JDouble>("reportDelayMs");
+      jni::local_ref<jni::JDouble> reportDelayMs = this->getFieldValue(fieldReportDelayMs);
+      static const auto fieldCallbackType = clazz->getField<JScanCallbackType>("callbackType");
+      jni::local_ref<JScanCallbackType> callbackType = this->getFieldValue(fieldCallbackType);
+      static const auto fieldMatchMode = clazz->getField<JScanMatchMode>("matchMode");
+      jni::local_ref<JScanMatchMode> matchMode = this->getFieldValue(fieldMatchMode);
+      static const auto fieldLegacy = clazz->getField<jni::JBoolean>("legacy");
+      jni::local_ref<jni::JBoolean> legacy = this->getFieldValue(fieldLegacy);
+      static const auto fieldPhy = clazz->getField<JScanPhy>("phy");
+      jni::local_ref<JScanPhy> phy = this->getFieldValue(fieldPhy);
       return ScanOptions(
         serviceUUIDs != nullptr ? std::make_optional([&](auto&& __input) {
           size_t __size = __input->size();
@@ -53,7 +83,19 @@ namespace margelo::nitro::munimbluetooth {
           return __vector;
         }(serviceUUIDs)) : std::nullopt,
         allowDuplicates != nullptr ? std::make_optional(static_cast<bool>(allowDuplicates->value())) : std::nullopt,
-        scanMode != nullptr ? std::make_optional(scanMode->toCpp()) : std::nullopt
+        scanMode != nullptr ? std::make_optional(scanMode->toCpp()) : std::nullopt,
+        rssiThreshold != nullptr ? std::make_optional(rssiThreshold->value()) : std::nullopt,
+        namePrefix != nullptr ? std::make_optional(namePrefix->toStdString()) : std::nullopt,
+        deviceName != nullptr ? std::make_optional(deviceName->toStdString()) : std::nullopt,
+        deviceAddress != nullptr ? std::make_optional(deviceAddress->toStdString()) : std::nullopt,
+        manufacturerId != nullptr ? std::make_optional(manufacturerId->value()) : std::nullopt,
+        manufacturerData != nullptr ? std::make_optional(manufacturerData->toStdString()) : std::nullopt,
+        manufacturerDataMask != nullptr ? std::make_optional(manufacturerDataMask->toStdString()) : std::nullopt,
+        reportDelayMs != nullptr ? std::make_optional(reportDelayMs->value()) : std::nullopt,
+        callbackType != nullptr ? std::make_optional(callbackType->toCpp()) : std::nullopt,
+        matchMode != nullptr ? std::make_optional(matchMode->toCpp()) : std::nullopt,
+        legacy != nullptr ? std::make_optional(static_cast<bool>(legacy->value())) : std::nullopt,
+        phy != nullptr ? std::make_optional(phy->toCpp()) : std::nullopt
       );
     }
 
@@ -63,7 +105,7 @@ namespace margelo::nitro::munimbluetooth {
      */
     [[maybe_unused]]
     static jni::local_ref<JScanOptions::javaobject> fromCpp(const ScanOptions& value) {
-      using JSignature = JScanOptions(jni::alias_ref<jni::JArrayClass<jni::JString>>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<JScanMode>);
+      using JSignature = JScanOptions(jni::alias_ref<jni::JArrayClass<jni::JString>>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<JScanMode>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JDouble>, jni::alias_ref<JScanCallbackType>, jni::alias_ref<JScanMatchMode>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<JScanPhy>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -79,7 +121,19 @@ namespace margelo::nitro::munimbluetooth {
           return __array;
         }(value.serviceUUIDs.value()) : nullptr,
         value.allowDuplicates.has_value() ? jni::JBoolean::valueOf(value.allowDuplicates.value()) : nullptr,
-        value.scanMode.has_value() ? JScanMode::fromCpp(value.scanMode.value()) : nullptr
+        value.scanMode.has_value() ? JScanMode::fromCpp(value.scanMode.value()) : nullptr,
+        value.rssiThreshold.has_value() ? jni::JDouble::valueOf(value.rssiThreshold.value()) : nullptr,
+        value.namePrefix.has_value() ? jni::make_jstring(value.namePrefix.value()) : nullptr,
+        value.deviceName.has_value() ? jni::make_jstring(value.deviceName.value()) : nullptr,
+        value.deviceAddress.has_value() ? jni::make_jstring(value.deviceAddress.value()) : nullptr,
+        value.manufacturerId.has_value() ? jni::JDouble::valueOf(value.manufacturerId.value()) : nullptr,
+        value.manufacturerData.has_value() ? jni::make_jstring(value.manufacturerData.value()) : nullptr,
+        value.manufacturerDataMask.has_value() ? jni::make_jstring(value.manufacturerDataMask.value()) : nullptr,
+        value.reportDelayMs.has_value() ? jni::JDouble::valueOf(value.reportDelayMs.value()) : nullptr,
+        value.callbackType.has_value() ? JScanCallbackType::fromCpp(value.callbackType.value()) : nullptr,
+        value.matchMode.has_value() ? JScanMatchMode::fromCpp(value.matchMode.value()) : nullptr,
+        value.legacy.has_value() ? jni::JBoolean::valueOf(value.legacy.value()) : nullptr,
+        value.phy.has_value() ? JScanPhy::fromCpp(value.phy.value()) : nullptr
       );
     }
   };

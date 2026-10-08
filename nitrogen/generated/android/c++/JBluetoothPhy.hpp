@@ -15,7 +15,7 @@ namespace margelo::nitro::munimbluetooth {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "BluetoothPhy" and the the Kotlin enum "BluetoothPhy".
+   * The C++ JNI bridge between the C++ enum "BluetoothPhy" and the Kotlin enum "BluetoothPhy".
    */
   struct JBluetoothPhy final: public jni::JavaClass<JBluetoothPhy> {
   public:
@@ -45,12 +45,12 @@ namespace margelo::nitro::munimbluetooth {
         case BluetoothPhy::LE1M:
           static const auto fieldLE1M = clazz->getStaticField<JBluetoothPhy>("LE1M");
           return clazz->getStaticFieldValue(fieldLE1M);
-        case BluetoothPhy::LE2M:
-          static const auto fieldLE2M = clazz->getStaticField<JBluetoothPhy>("LE2M");
-          return clazz->getStaticFieldValue(fieldLE2M);
         case BluetoothPhy::LECODED:
           static const auto fieldLECODED = clazz->getStaticField<JBluetoothPhy>("LECODED");
           return clazz->getStaticFieldValue(fieldLECODED);
+        case BluetoothPhy::LE2M:
+          static const auto fieldLE2M = clazz->getStaticField<JBluetoothPhy>("LE2M");
+          return clazz->getStaticFieldValue(fieldLE2M);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

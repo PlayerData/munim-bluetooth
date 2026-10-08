@@ -11,8 +11,10 @@
 #include "GATTService.hpp"
 
 #include "GATTCharacteristic.hpp"
+#include "GATTCharacteristicPermission.hpp"
 #include "GATTDescriptor.hpp"
 #include "JGATTCharacteristic.hpp"
+#include "JGATTCharacteristicPermission.hpp"
 #include "JGATTDescriptor.hpp"
 #include <optional>
 #include <string>
@@ -23,7 +25,7 @@ namespace margelo::nitro::munimbluetooth {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "GATTService" and the the Kotlin data class "GATTService".
+   * The C++ JNI bridge between the C++ struct "GATTService" and the Kotlin data class "GATTService".
    */
   struct JGATTService final: public jni::JavaClass<JGATTService> {
   public:

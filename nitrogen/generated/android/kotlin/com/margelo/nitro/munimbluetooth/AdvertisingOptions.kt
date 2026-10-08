@@ -29,6 +29,12 @@ data class AdvertisingOptions(
   val manufacturerData: String?,
   @DoNotStrip
   @Keep
+  val manufacturerCompanyId: Double?,
+  @DoNotStrip
+  @Keep
+  val manufacturerDataEntries: Array<ManufacturerDataEntry>?,
+  @DoNotStrip
+  @Keep
   val advertisingData: AdvertisingDataTypes?
 ) {
   /* primary constructor */
@@ -39,14 +45,18 @@ data class AdvertisingOptions(
     return Objects.deepEquals(this.serviceUUIDs, other.serviceUUIDs)
       && Objects.deepEquals(this.localName, other.localName)
       && Objects.deepEquals(this.manufacturerData, other.manufacturerData)
+      && Objects.deepEquals(this.manufacturerCompanyId, other.manufacturerCompanyId)
+      && Objects.deepEquals(this.manufacturerDataEntries, other.manufacturerDataEntries)
       && Objects.deepEquals(this.advertisingData, other.advertisingData)
   }
 
   override fun hashCode(): Int {
-    return arrayOf(
+    return arrayOf<Any?>(
       serviceUUIDs,
       localName,
       manufacturerData,
+      manufacturerCompanyId,
+      manufacturerDataEntries,
       advertisingData
     ).contentDeepHashCode()
   }
@@ -59,8 +69,8 @@ data class AdvertisingOptions(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(serviceUUIDs: Array<String>, localName: String?, manufacturerData: String?, advertisingData: AdvertisingDataTypes?): AdvertisingOptions {
-      return AdvertisingOptions(serviceUUIDs, localName, manufacturerData, advertisingData)
+    private fun fromCpp(serviceUUIDs: Array<String>, localName: String?, manufacturerData: String?, manufacturerCompanyId: Double?, manufacturerDataEntries: Array<ManufacturerDataEntry>?, advertisingData: AdvertisingDataTypes?): AdvertisingOptions {
+      return AdvertisingOptions(serviceUUIDs, localName, manufacturerData, manufacturerCompanyId, manufacturerDataEntries, advertisingData)
     }
   }
 }

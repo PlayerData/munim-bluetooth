@@ -1,17 +1,35 @@
 const { withAndroidManifest, withInfoPlist } = require('@expo/config-plugins');
 
-const ANDROID_PERMISSIONS = [
-  'android.permission.BLUETOOTH',
-  'android.permission.BLUETOOTH_ADMIN',
-  'android.permission.BLUETOOTH_ADVERTISE',
-  'android.permission.BLUETOOTH_SCAN',
-  'android.permission.BLUETOOTH_CONNECT',
-  'android.permission.ACCESS_FINE_LOCATION',
-  'android.permission.ACCESS_COARSE_LOCATION',
-  'android.permission.FOREGROUND_SERVICE',
-  'android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE',
-  'android.permission.FOREGROUND_SERVICE_LOCATION',
-  'android.permission.POST_NOTIFICATIONS',
+const DEFAULT_ANDROID_BLUETOOTH_PERMISSIONS = ['scan', 'connect'];
+const ANDROID_BLUETOOTH_PERMISSIONS = {
+  scan: [
+    { name: 'android.permission.BLUETOOTH', maxSdkVersion: '30' },
+    { name: 'android.permission.BLUETOOTH_ADMIN', maxSdkVersion: '30' },
+    { name: 'android.permission.ACCESS_FINE_LOCATION', maxSdkVersion: '30' },
+    // Location is capped at API 30, so on Android 12+ scan results are only
+    // delivered when the scan permission disavows location (see README).
+    {
+      name: 'android.permission.BLUETOOTH_SCAN',
+      usesPermissionFlags: 'neverForLocation',
+    },
+    { name: 'android.permission.BLUETOOTH_CONNECT' },
+  ],
+  connect: [
+    { name: 'android.permission.BLUETOOTH', maxSdkVersion: '30' },
+    { name: 'android.permission.BLUETOOTH_CONNECT' },
+  ],
+  advertise: [
+    { name: 'android.permission.BLUETOOTH', maxSdkVersion: '30' },
+    { name: 'android.permission.BLUETOOTH_ADMIN', maxSdkVersion: '30' },
+    { name: 'android.permission.BLUETOOTH_ADVERTISE' },
+    { name: 'android.permission.BLUETOOTH_CONNECT' },
+  ],
+};
+
+const ANDROID_SERVICE_PERMISSIONS = [
+  { name: 'android.permission.FOREGROUND_SERVICE' },
+  { name: 'android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE' },
+  { name: 'android.permission.POST_NOTIFICATIONS' },
 ];
 
 const IOS_BACKGROUND_MODES = ['bluetooth-central', 'bluetooth-peripheral'];
@@ -27,12 +45,40 @@ function ensureArray(parent, key) {
 function ensureAndroidPermission(manifest, permission) {
   const permissions = ensureArray(manifest, 'uses-permission');
   const exists = permissions.some(
-    (entry) => entry.$?.['android:name'] === permission
+    (entry) => entry.$?.['android:name'] === permission.name
   );
 
   if (!exists) {
-    permissions.push({ $: { 'android:name': permission } });
+    const attributes = { 'android:name': permission.name };
+    if (permission.maxSdkVersion) {
+      attributes['android:maxSdkVersion'] = permission.maxSdkVersion;
+    }
+    if (permission.usesPermissionFlags) {
+      attributes['android:usesPermissionFlags'] = permission.usesPermissionFlags;
+    }
+    permissions.push({ $: attributes });
   }
+}
+
+function normalizeAndroidBluetoothPermissions(value) {
+  if (value === false) {
+    return [];
+  }
+
+  const permissions = value ?? DEFAULT_ANDROID_BLUETOOTH_PERMISSIONS;
+  if (!Array.isArray(permissions)) {
+    throw new TypeError('androidBluetoothPermissions must be an array or false');
+  }
+
+  const normalized = Array.from(new Set(permissions));
+  normalized.forEach((permission) => {
+    if (!ANDROID_BLUETOOTH_PERMISSIONS[permission]) {
+      throw new TypeError(
+        `Unsupported Android Bluetooth permission capability: ${permission}`
+      );
+    }
+  });
+  return normalized;
 }
 
 function ensureAndroidFeature(manifest, featureName, required) {
@@ -69,7 +115,7 @@ function ensureBackgroundService(manifest) {
         'android:name': serviceName,
         'android:enabled': 'true',
         'android:exported': 'false',
-        'android:foregroundServiceType': 'connectedDevice|location',
+        'android:foregroundServiceType': 'connectedDevice',
       },
     });
   }
@@ -104,6 +150,9 @@ function withMunimBluetooth(config, options = {}) {
     options.bluetoothBackground === undefined ? true : options.bluetoothBackground;
   const multipeerServiceTypes = normalizeMultipeerServiceTypes(
     options.multipeerServiceTypes
+  );
+  const androidBluetoothPermissions = normalizeAndroidBluetoothPermissions(
+    options.androidBluetoothPermissions
   );
 
   config = withInfoPlist(config, (pluginConfig) => {
@@ -141,11 +190,12 @@ function withMunimBluetooth(config, options = {}) {
 
   return withAndroidManifest(config, (pluginConfig) => {
     const manifest = pluginConfig.modResults.manifest;
-    ANDROID_PERMISSIONS.forEach((permission) =>
-      ensureAndroidPermission(manifest, permission)
-    );
+    androidBluetoothPermissions
+      .flatMap((permission) => ANDROID_BLUETOOTH_PERMISSIONS[permission])
+      .concat(ANDROID_SERVICE_PERMISSIONS)
+      .forEach((permission) => ensureAndroidPermission(manifest, permission));
     ensureAndroidFeature(manifest, 'android.hardware.bluetooth', false);
-    ensureAndroidFeature(manifest, 'android.hardware.bluetooth_le', true);
+    ensureAndroidFeature(manifest, 'android.hardware.bluetooth_le', false);
     ensureBackgroundService(manifest);
     return pluginConfig;
   });

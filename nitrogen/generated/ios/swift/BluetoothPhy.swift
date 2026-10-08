@@ -19,10 +19,10 @@ public extension BluetoothPhy {
     switch string {
       case "le1m":
         self = .le1m
-      case "le2m":
-        self = .le2m
       case "leCoded":
         self = .lecoded
+      case "le2m":
+        self = .le2m
       default:
         return nil
     }
@@ -35,10 +35,10 @@ public extension BluetoothPhy {
     switch self {
       case .le1m:
         return "le1m"
-      case .le2m:
-        return "le2m"
       case .lecoded:
         return "leCoded"
+      case .le2m:
+        return "le2m"
     }
   }
 }
